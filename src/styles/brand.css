@@ -1,0 +1,53 @@
+/* ── Brand Design Tokens — Green / Yellow / White ─────────────── */
+/* Light mode: white background, deep green primary, golden yellow accent */
+:root {
+  --c-bg:           #FFFFFF;
+  --c-card:         #FFFFFF;
+  --c-bg-sec:       #F1F8E9;   /* light green-tinted surface */
+  --c-primary:      #2E7D32;   /* deep green */
+  --c-primary-h:    #1B5E20;   /* hover: deeper green */
+  --c-accent:       #F9A825;   /* golden yellow */
+  --c-accent-h:     #F57F17;   /* hover: darker yellow */
+  --c-text:         #1B1B1B;
+  --c-text-sec:     #5C6B5E;   /* muted green-grey */
+  --c-border:       #C8E6C9;   /* light green border */
+  --c-success:      #388E3C;
+  --c-warning:      #F9A825;
+  --c-danger:       #C62828;
+  --c-gradient:     linear-gradient(135deg, #2E7D32 0%, #F9A825 100%);
+  --c-gradient-r:   linear-gradient(to right, #2E7D32, #F9A825);
+  --c-nav-glass:    rgba(241, 248, 233, 0.92);
+  --c-footer-bg:    #1B5E20;   /* deep forest green */
+  --c-shadow-card:  0 1px 3px rgba(46,125,50,0.08), 0 1px 2px rgba(46,125,50,0.04);
+  --c-shadow-hover: 0 10px 25px rgba(46,125,50,0.15), 0 4px 10px rgba(46,125,50,0.08);
+}
+
+/* Dark mode: near-black background, light green primary, soft yellow accent */
+.dark {
+  --c-bg:           #121212;
+  --c-card:         #1E1E1E;
+  --c-bg-sec:       #252525;
+  --c-primary:      #66BB6A;   /* light green */
+  --c-primary-h:    #81C784;
+  --c-accent:       #FFD54F;   /* soft yellow */
+  --c-accent-h:     #FFCA28;
+  --c-text:         #F5F5F5;
+  --c-text-sec:     #A5B4A7;   /* muted green-grey */
+  --c-border:       #2E4A30;   /* dark green border */
+  --c-success:      #66BB6A;
+  --c-warning:      #FFD54F;
+  --c-danger:       #EF9A9A;
+  --c-gradient:     linear-gradient(135deg, #66BB6A 0%, #FFD54F 100%);
+  --c-gradient-r:   linear-gradient(to right, #66BB6A, #FFD54F);
+  --c-nav-glass:    rgba(18, 18, 18, 0.92);
+  --c-footer-bg:    #0A0A0A;
+  --c-shadow-card:  0 0 20px rgba(102,187,106,0.08);
+  --c-shadow-hover: 0 0 40px rgba(102,187,106,0.18);
+}
+
+/* Smooth theme transition on key elements */
+body,
+.theme-aware {
+  transition: background-color 300ms ease, color 300ms ease,
+              border-color 300ms ease, box-shadow 300ms ease;
+}
