@@ -141,13 +141,10 @@ function HeroSection() {
             borderValue="none"
             textColor="#ffffff"
             filledTextColor="#1B5E20"
-            onClick={() => navigate("/checkout")}
+            onClick={() => navigate("/produk")}
           >
             <ShoppingCart size={16} /> Pesan Sekarang
           </OutlineFillButton>
-          <Link to="/produk" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-sm" style={{ border: "1.5px solid rgba(255,255,255,0.3)", color: "#fff", fontFamily: "'Inter',sans-serif", background: "rgba(255,255,255,0.06)", backdropFilter: "blur(8px)" }}>
-            Lihat Katalog <ArrowRight size={14} />
-          </Link>
         </motion.div>
 
         {/* Floating stats card */}
@@ -322,7 +319,7 @@ function FlashSaleSection() {
                   </div>
                   <p className="text-white/40 text-xs mt-1" style={{ fontFamily: "'Inter',sans-serif" }}>Sisa {item.stock} item</p>
                 </div>
-                <Link to="/checkout" className="w-full flex items-center justify-center py-2 rounded-lg text-xs font-bold text-white" style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>
+                <Link to="/produk/kartu-nama" className="w-full flex items-center justify-center py-2 rounded-lg text-xs font-bold text-white" style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>
                   Beli Sekarang
                 </Link>
               </div>
