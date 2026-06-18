@@ -1,37 +1,49 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
   Plus, Search, Edit2, Trash2, Settings, Plane,
   Package, Check, X, AlertCircle
 } from "lucide-react";
 import { v } from "../../components/pageUtils";
-import { MACHINES, DRONES } from "../PerangkatPage";
+
 
 /* ── Types ────────────────────────────────────────────────────── */
 interface MachineData {
-  id: string;
+  id: number;
   name: string;
   slug: string;
   type: "machine" | "drone";
   status: "active" | "maintenance" | "inactive";
-  addedDate: string;
-}
 
-/* ── Mock Data ────────────────────────────────────────────────── */
-const initialMachinesData: MachineData[] = [
-  ...MACHINES.map((m, i) => ({
-    ...m,
-    type: "machine" as const,
-    status: i % 7 === 0 ? "maintenance" as const : "active" as const,
-    addedDate: `2024-0${Math.floor(i / 5) + 1}-${10 + i}`,
-  })),
-  ...DRONES.map((d, i) => ({
-    ...d,
-    type: "drone" as const,
-    status: "active" as const,
-    addedDate: `2024-02-${15 + i}`,
-  })),
-];
+  // MACHINE
+  dimension?: string;
+  weight?: string;
+  power?: string;
+  powerUsage?: string;
+  maxSpeed?: string;
+  workWidth?: string;
+  resolution?: string;
+  materialSupport?: string;
+  autoFeed?: boolean;
+  contourCut?: boolean;
+  digitalPanel?: boolean;
+  safetySensor?: boolean;
+
+  // DRONE
+  foldedDimension?: string;
+  flightTime?: string;
+  cameraSensor?: string;
+  videoResolution?: string;
+  gimbalRange?: string;
+  zoom?: string;
+  rtkModule?: boolean;
+  thermalCamera?: string;
+  obstacleSensing?: string;
+  ipRating?: string;
+
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 /* ── Add/Edit Modal ───────────────────────────────────────────── */
 interface ModalProps {
@@ -42,30 +54,73 @@ interface ModalProps {
 }
 
 function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
-  const [formData, setFormData] = useState<Partial<MachineData>>(
-    editData || {
-      name: "",
-      type: "machine",
-      status: "active",
+  const getInitialFormData = (): Partial<MachineData> => ({
+    name: "",
+    slug: "",
+    type: "machine",
+    status: "active",
+
+    // MACHINE
+    dimension: "",
+    weight: "",
+    power: "",
+    powerUsage: "",
+    maxSpeed: "",
+    workWidth: "",
+    resolution: "",
+    materialSupport: "",
+    autoFeed: false,
+    contourCut: false,
+    digitalPanel: false,
+    safetySensor: false,
+
+    // DRONE
+    foldedDimension: "",
+    flightTime: "",
+    cameraSensor: "",
+    videoResolution: "",
+    gimbalRange: "",
+    zoom: "",
+    rtkModule: false,
+    thermalCamera: "",
+    obstacleSensing: "",
+    ipRating: "",
+  });
+
+  const [formData, setFormData] =
+    useState<Partial<MachineData>>(getInitialFormData());
+
+  useEffect(() => {
+    if (editData) {
+      setFormData(editData);
+    } else {
+      setFormData(getInitialFormData());
     }
-  );
+  }, [editData, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
-    
-    // Generate slug from name
-    const slug = formData.name
-      ?.toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+
+    const slug =
+      formData.name
+        ?.toLowerCase()
+        .replace(
+          /[^a-z0-9]+/g,
+          "-"
+        )
+        .replace(
+          /^-|-$/g,
+          ""
+        );
 
     onSave({
       ...formData,
       slug,
-      id: editData?.id || `${formData.type === "machine" ? "M" : "D"}${String(Date.now()).slice(-3)}`,
-      addedDate: editData?.addedDate || new Date().toISOString().split("T")[0],
+      id: editData?.id,
     });
   };
 
@@ -79,30 +134,33 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-2xl p-8"
+        className="w-full max-w-3xl rounded-2xl overflow-hidden"
         style={{
           background: v("--c-card"),
           border: `1px solid ${v("--c-border")}`,
           boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+          maxHeight: "90vh",
         }}
       >
-        <div className="flex items-center justify-between mb-6">
-          <h2
-            className="font-['Poppins',sans-serif] font-bold text-2xl"
-            style={{ color: v("--c-text") }}
-          >
-            {editData ? "Edit" : "Tambah"} {formData.type === "machine" ? "Mesin" : "Drone"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300"
-            style={{
-              background: v("--c-bg-sec"),
-              color: v("--c-text-sec"),
-            }}
-          >
-            <X size={20} />
-          </button>
+        <div className="p-8 overflow-y-auto max-h-[90vh]">
+          <div className="flex items-center justify-between mb-6">
+            <h2
+              className="font-['Poppins',sans-serif] font-bold text-2xl"
+              style={{ color: v("--c-text") }}
+            >
+              {editData ? "Edit" : "Tambah"} {formData.type === "machine" ? "Mesin" : "Drone"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300"
+              style={{
+                background: v("--c-bg-sec"),
+                color: v("--c-text-sec"),
+              }}
+            >
+              <X size={20} />
+            </button>
+          
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -192,6 +250,420 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
             </div>
           </div>
 
+          {/* Dynamic Specification */}
+          {formData.type === "machine" ? (
+            <>
+              {/* TECHNICAL SPEC */}
+              <div className="space-y-4">
+                <h3
+                  className="text-sm font-bold"
+                  style={{
+                    color: v("--c-text"),
+                    fontFamily:
+                      "'Poppins',sans-serif",
+                  }}
+                >
+                  Spesifikasi Teknis
+                </h3>
+
+                <input
+                  type="text"
+                  placeholder="Dimensi (120x80x95 cm)"
+                  value={formData.dimension || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      dimension: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
+                />
+
+                <input
+                  type="number"
+                  placeholder="Berat (kg)"
+                  value={formData.weight ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      weight: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
+                />
+
+                <select
+                  className="w-full px-4 py-3 rounded-xl outline-none"
+                  style={{
+                    background:
+                      v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color:
+                      v("--c-text"),
+                  }}
+                  value={formData.power || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      power: e.target.value,
+                    })
+                  }
+                >
+                  <option>
+                    Pilih Tegangan
+                  </option>
+
+                  <option>
+                    110V
+                  </option>
+
+                  <option>
+                    220V
+                  </option>
+
+                  <option>
+                    380V
+                  </option>
+                </select>
+
+                <input
+                  type="number"
+                  placeholder="Konsumsi Daya (W)"
+                  value={formData.powerUsage ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      powerUsage: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
+                />
+              </div>
+
+              {/* PERFORMANCE */}
+              <div className="space-y-4">
+                <h3
+                  className="text-sm font-bold"
+                  style={{
+                    color: v("--c-text"),
+                  }}
+                >
+                  Kapasitas & Performa
+                </h3>
+
+                <input
+                  type="number"
+                  placeholder="Kecepatan Maksimal"
+                  value={formData.maxSpeed ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      maxSpeed: e.target.value,
+                    })
+                  }
+                />
+
+                <input
+                  type="number"
+                  placeholder="Lebar Kerja (mm)"
+                  value={formData.workWidth ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      workWidth: e.target.value,
+                    })
+                  }
+                />
+
+                <select
+                  className="w-full px-4 py-3 rounded-xl outline-none"
+                  value={formData.resolution ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      resolution: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">
+                    Resolusi
+                  </option>
+
+                  <option value="720 dpi">
+                    720 dpi
+                  </option>
+
+                  <option value="1080 dpi">
+                    1080 dpi
+                  </option>
+
+                  <option value="1440 dpi">
+                    1440 dpi
+                  </option>
+
+                  <option value="2880 dpi">
+                    2880 dpi
+                  </option>
+                </select>
+              </div>
+
+              {/* FEATURES */}
+              <div className="space-y-3">
+                <h3
+                  className="text-sm font-bold"
+                  style={{
+                    color: v("--c-text"),
+                  }}
+                >
+                  Fitur Unggulan
+                </h3>
+
+                {[
+                  {
+                    label: "Auto Feed System",
+                    key: "autoFeed",
+                  },
+                  {
+                    label: "Camera Contour Cutting",
+                    key: "contourCut",
+                  },
+                  {
+                    label: "Digital Control Panel",
+                    key: "digitalPanel",
+                  },
+                  {
+                    label: "Safety Sensor",
+                    key: "safetySensor",
+                  },
+                ].map((feature) => (
+                  <label
+                    key={feature.key}
+                    className="flex items-center gap-3"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(
+                        formData[
+                          feature.key as keyof MachineData
+                        ]
+                      )}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          [feature.key]:
+                            e.target.checked,
+                        })
+                      }
+                    />
+
+                    <span
+                      className="text-sm"
+                      style={{
+                        color: v("--c-text"),
+                      }}
+                    >
+                      {feature.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* DRONE TECH */}
+              <div className="space-y-4">
+                <h3
+                  className="text-sm font-bold"
+                  style={{
+                    color: v("--c-text"),
+                  }}
+                >
+                  Spesifikasi Teknis
+                </h3>
+
+                <input
+                  type="text"
+                  placeholder="Dimensi Folded"
+                  value={formData.foldedDimension ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      foldedDimension:
+                        e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                  }}
+                />
+
+                <input
+                  type="number"
+                  placeholder="Berat (gram)"
+                  className="w-full px-4 py-3 rounded-xl outline-none"
+                  style={{
+                    background:
+                      v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                  }}
+                />
+
+                <input
+                  type="number"
+                  placeholder="Max Flight Time (menit)"
+                  value={formData.flightTime ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      flightTime:
+                        e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              {/* CAMERA */}
+              <div className="space-y-4">
+                <h3
+                  className="text-sm font-bold"
+                  style={{
+                    color: v("--c-text"),
+                  }}
+                >
+                  Camera & Gimbal
+                </h3>
+
+                <select
+                  value={formData.cameraSensor ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      cameraSensor:
+                        e.target.value,
+                    })
+                  }
+                >
+                  <option value="">
+                    Sensor
+                  </option>
+
+                  <option value="1/2 CMOS">
+                    1/2 CMOS
+                  </option>
+
+                  <option value="1-inch CMOS">
+                    1-inch CMOS
+                  </option>
+
+                  <option value="4/3 CMOS">
+                    4/3 CMOS
+                  </option>
+                </select>
+
+                <select
+                  value={formData.videoResolution ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      videoResolution:
+                        e.target.value,
+                    })
+                  }
+                >
+                  <option value="">
+                    Video Resolution
+                  </option>
+
+                  <option value="4K">
+                    4K
+                  </option>
+
+                  <option value="5.1K">
+                    5.1K
+                  </option>
+
+                  <option value="8K">
+                    8K
+                  </option>
+                </select>
+              </div>
+
+              {/* FEATURES */}
+              <div className="space-y-3">
+                <h3
+                  className="text-sm font-bold"
+                  style={{
+                    color: v("--c-text"),
+                  }}
+                >
+                  Fitur Unggulan
+                </h3>
+
+                {[
+                  {
+                    label: "RTK Module",
+                    key: "rtkModule",
+                  },
+                  {
+                    label: "Thermal Camera",
+                    key: "thermalCamera",
+                  },
+                  {
+                    label: "Obstacle Sensing",
+                    key: "obstacleSensing",
+                  },
+                ].map((feature) => (
+                  <label
+                    key={feature.key}
+                    className="flex items-center gap-3"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(
+                        formData[
+                          feature.key as keyof MachineData
+                        ]
+                      )}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          [feature.key]:
+                            e.target.checked,
+                        })
+                      }
+                    />
+
+                    <span
+                      className="text-sm"
+                      style={{
+                        color: v("--c-text"),
+                      }}
+                    >
+                      {feature.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+
           {/* Actions */}
           <div className="flex gap-3 pt-4">
             <button
@@ -215,6 +687,7 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
             </button>
           </div>
         </form>
+      </div>
       </motion.div>
     </div>
   );
@@ -222,7 +695,7 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
 
 /* ── Main Component ───────────────────────────────────────────── */
 export function AdminInventaris() {
-  const [machines, setMachines] = useState<MachineData[]>(initialMachinesData);
+  const [machines, setMachines] = useState<MachineData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "machine" | "drone">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "maintenance" | "inactive">("all");
@@ -231,8 +704,17 @@ export function AdminInventaris() {
 
   // Filter
   const filteredMachines = machines.filter((m) => {
-    const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         m.id.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      m.name
+        .toLowerCase()
+        .includes(
+          searchQuery.toLowerCase()
+        ) ||
+      String(m.id)
+        .toLowerCase()
+        .includes(
+          searchQuery.toLowerCase()
+        );
     const matchesType = filterType === "all" || m.type === filterType;
     const matchesStatus = filterStatus === "all" || m.status === filterStatus;
     return matchesSearch && matchesType && matchesStatus;
@@ -248,31 +730,145 @@ export function AdminInventaris() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Yakin ingin menghapus item ini?")) {
-      setMachines(machines.filter((m) => m.id !== id));
+  const handleDelete =
+    async (
+      id: number
+    ) => {
+      const confirmDelete =
+        confirm(
+          "Yakin ingin menghapus item ini?"
+        );
+
+      if (
+        !confirmDelete
+      )
+        return;
+
+      try {
+        await fetch(
+          `http://localhost:3001/api/devices/${id}`,
+          {
+            method:
+              "DELETE",
+          }
+        );
+
+        await fetchDevices();
+        await fetchStats();
+      } catch (
+        error
+      ) {
+        console.error(
+          "Gagal menghapus:",
+          error
+        );
+      }
+    };
+
+  const handleSave = async (
+    data: Partial<MachineData>
+  ) => {
+    try {
+      if (editingMachine) {
+        await fetch(
+          `http://localhost:3001/api/devices/${editingMachine.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify(
+              data
+            ),
+          }
+        );
+      } else {
+        await fetch(
+          "http://localhost:3001/api/devices",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify(
+              data
+            ),
+          }
+        );
+      }
+
+      // refresh data
+      await fetchDevices();
+      await fetchStats();
+
+      setIsModalOpen(false);
+      setEditingMachine(null);
+    } catch (error) {
+      console.error(
+        "Gagal menyimpan:",
+        error
+      );
     }
   };
+  
+  const [
+    stats,
+    setStats,
+  ] = useState({
+    total: 0,
+    machines: 0,
+    drones: 0,
+    active: 0,
+    maintenance: 0,
+  });
 
-  const handleSave = (data: Partial<MachineData>) => {
-    if (editingMachine) {
-      // Update existing
-      setMachines(machines.map((m) => (m.id === editingMachine.id ? { ...m, ...data } : m)));
-    } else {
-      // Add new
-      setMachines([...machines, data as MachineData]);
-    }
-    setIsModalOpen(false);
-  };
+  const fetchStats =
+    async () => {
+      try {
+        const res =
+          await fetch(
+            "http://localhost:3001/api/devices/stats"
+          );
 
-  const stats = {
-    total: machines.length,
-    machines: machines.filter((m) => m.type === "machine").length,
-    drones: machines.filter((m) => m.type === "drone").length,
-    active: machines.filter((m) => m.status === "active").length,
-    maintenance: machines.filter((m) => m.status === "maintenance").length,
-  };
+        const data =
+          await res.json();
 
+        setStats(data);
+      } catch (error) {
+        console.error(
+          "Gagal mengambil stats:",
+          error
+        );
+      }
+    };
+
+  const fetchDevices =
+    async () => {
+      try {
+        const res =
+          await fetch(
+            "http://localhost:3001/api/devices"
+          );
+
+        const data =
+          await res.json();
+
+        setMachines(data);
+      } catch (error) {
+        console.error(
+          "Gagal mengambil devices:",
+          error
+        );
+      }
+    };
+
+  useEffect(() => {
+    fetchDevices();
+    fetchStats();
+  }, []);
+  
   return (
     <div className="p-6 md:p-10">
       {/* Header */}
@@ -497,7 +1093,13 @@ export function AdminInventaris() {
                       className="px-6 py-4 text-sm"
                       style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}
                     >
-                      {machine.addedDate}
+                      {machine.createdAt
+                        ? new Date(
+                            machine.createdAt
+                          ).toLocaleDateString(
+                            "id-ID"
+                          )
+                        : "-"}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">

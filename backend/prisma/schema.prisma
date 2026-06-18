@@ -1,0 +1,169 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  fullName     String
+  email        String   @unique
+  phoneNumber  String   @unique
+  password     String
+  referralCode String?
+  role         String   @default("user")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  price       Int
+  image       String?
+  images      Json?
+  category    String
+  featured    Boolean @default(false)
+  active      Boolean @default(true)
+
+  specifications Json?
+
+  configurations ProductConfig[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductConfig {
+  id Int @id @default(autoincrement())
+
+  productId  Int
+  type       String
+  name       String
+  extraPrice Int     @default(0)
+  active     Boolean @default(true)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ConfigTemplate {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  items ConfigTemplateItem[]
+
+  createdAt DateTime @default(now())
+}
+
+model ConfigTemplateItem {
+  id Int @id @default(autoincrement())
+
+  templateId Int
+  type       String // material | finishing | size | design
+  name       String
+  extraPrice Int    @default(0)
+
+  template ConfigTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  icon      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Material {
+  id        Int      @id @default(autoincrement())
+  name      String
+  unit      String
+  stock     Int      @default(0)
+  threshold Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Device {
+  id   Int    @id @default(autoincrement())
+  name String
+  slug String @unique
+
+  type   DeviceType
+  status DeviceStatus
+
+  // ===== MACHINE =====
+  dimension  String?
+  weight     String?
+  power      String?
+  powerUsage String?
+
+  maxSpeed        String?
+  workWidth       String?
+  resolution      String?
+  materialSupport String?
+
+  autoFeed     Boolean?
+  contourCut   Boolean?
+  digitalPanel Boolean?
+  safetySensor Boolean?
+
+  // ===== DRONE =====
+  foldedDimension String?
+  flightTime      String?
+  cameraSensor    String?
+  videoResolution String?
+  gimbalRange     String?
+  zoom            String?
+
+  rtkModule       Boolean?
+  thermalCamera   String?
+  obstacleSensing String?
+  ipRating        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Service {
+  id          Int     @id @default(autoincrement())
+  title       String
+  description String
+  features    Json
+  duration    String
+  price       Int
+  image       String?
+  category    String
+  featured    Boolean @default(false)
+  active      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum DeviceType {
+  machine
+  drone
+}
+
+enum DeviceStatus {
+  active
+  maintenance
+  inactive
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
