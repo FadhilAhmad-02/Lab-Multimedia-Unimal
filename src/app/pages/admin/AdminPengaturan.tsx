@@ -1,24 +1,17 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Store, Image, FileText, Layout, Settings2, Upload,
+  Store, FileText, Layout, Settings2, Upload,
   Eye, EyeOff, Plus, ToggleLeft, ToggleRight, Save,
-  GripVertical, Edit2, Trash2, Send, X,
+  Edit2, Trash2, X,
 } from "lucide-react";
 import { v } from "../../components/pageUtils";
 
 const TABS = [
   { label: "Info Toko", Icon: Store },
-  { label: "Banner", Icon: Image },
   { label: "Halaman Statis", Icon: FileText },
   { label: "Template Desain", Icon: Layout },
   { label: "Sistem", Icon: Settings2 },
-];
-
-const BANNERS = [
-  { id: 1, title: "Flash Sale Weekend", subtitle: "Diskon hingga 30%!", active: true, image: "https://images.unsplash.com/photo-1698319298199-b81a54ced28a?w=400&q=80" },
-  { id: 2, title: "Promo Member Baru", subtitle: "Daftar & hemat 10%", active: true, image: "https://images.unsplash.com/photo-1579642984744-4dd0fe83c38c?w=400&q=80" },
-  { id: 3, title: "Layanan Desain Gratis", subtitle: "Konsultasi tanpa biaya", active: false, image: "https://images.unsplash.com/photo-1658863025658-4a259cc68fc9?w=400&q=80" },
 ];
 
 const STATIC_PAGES = [
@@ -29,21 +22,91 @@ const STATIC_PAGES = [
 ];
 
 const TEMPLATES = [
-  { id: 1, name: "Kartu Nama Modern", category: "Kartu Nama", image: "https://images.unsplash.com/photo-1579642984744-4dd0fe83c38c?w=300&q=80", active: true },
-  { id: 2, name: "Banner Promosi Bold", category: "Banner", image: "https://images.unsplash.com/photo-1698319298199-b81a54ced28a?w=300&q=80", active: true },
-  { id: 3, name: "Brosur Trifold", category: "Brosur", image: "https://images.unsplash.com/photo-1658863025658-4a259cc68fc9?w=300&q=80", active: false },
+  { id: 1, name: "Kartu Nama Modern", category: "Kartu Nama", image: "https://images.unsplash.com/photo-1579642984744-4dd0fe83c38c?w=300&q=80", link: "https://example.com/kartu-nama", active: true },
+  { id: 2, name: "Banner Promosi Bold", category: "Banner", image: "https://images.unsplash.com/photo-1698319298199-b81a54ced28a?w=300&q=80", link: "https://example.com/banner-promosi", active: true },
+  { id: 3, name: "Brosur Trifold", category: "Brosur", image: "https://images.unsplash.com/photo-1658863025658-4a259cc68fc9?w=300&q=80", link: "https://example.com/brosur-trifold", active: false },
 ];
-
-const DAYS = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 
 export function AdminPengaturan() {
   const [activeTab, setActiveTab] = useState(0);
   const [maintenance, setMaintenance] = useState(false);
   const [showMidtransKey, setShowMidtransKey] = useState(false);
-  const [banners, setBanners] = useState(BANNERS);
   const [templates, setTemplates] = useState(TEMPLATES);
-  const [jamBuka, setJamBuka] = useState(DAYS.map(() => ({ active: true, buka: "08:00", tutup: "17:00" })));
   const [saved, setSaved] = useState(false);
+
+  // States for Template CRUD Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
+
+  // Form fields
+  const [formName, setFormName] = useState("");
+  const [formCategory, setFormCategory] = useState("Kartu Nama");
+  const [formImage, setFormImage] = useState("");
+  const [formLink, setFormLink] = useState("");
+
+  const handleOpenCreate = () => {
+    setModalMode("create");
+    setEditingTemplateId(null);
+    setFormName("");
+    setFormCategory("Kartu Nama");
+    setFormImage("");
+    setFormLink("");
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (t: typeof TEMPLATES[0]) => {
+    setModalMode("edit");
+    setEditingTemplateId(t.id);
+    setFormName(t.name);
+    setFormCategory(t.category);
+    setFormImage(t.image);
+    setFormLink(t.link || "");
+    setIsModalOpen(true);
+  };
+
+  const handleSaveTemplate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formName.trim() || !formCategory.trim() || !formImage.trim() || !formLink.trim()) {
+      alert("Semua field harus diisi!");
+      return;
+    }
+
+    if (modalMode === "create") {
+      const newTemplate = {
+        id: Date.now(),
+        name: formName,
+        category: formCategory,
+        image: formImage,
+        link: formLink,
+        active: true,
+      };
+      setTemplates(prev => [...prev, newTemplate]);
+    } else {
+      setTemplates(prev =>
+        prev.map(t =>
+          t.id === editingTemplateId
+            ? { ...t, name: formName, category: formCategory, image: formImage, link: formLink }
+            : t
+        )
+      );
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDeleteTemplate = (id: number) => {
+    if (confirm("Apakah Anda yakin ingin menghapus template ini?")) {
+      setTemplates(prev => prev.filter(t => t.id !== id));
+    }
+  };
+
+  const handleViewTemplate = (link: string) => {
+    if (link) {
+      window.open(link, "_blank", "noopener,noreferrer");
+    } else {
+      alert("Link template tidak tersedia!");
+    }
+  };
 
   const handleSave = () => {
     setSaved(true);
@@ -126,77 +189,11 @@ export function AdminPengaturan() {
                 </div>
               </div>
 
-              <div className="rounded-2xl p-6" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
-                <h2 className="font-semibold mb-5" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Jam Operasional</h2>
-                <div className="space-y-3">
-                  {DAYS.map((day, i) => (
-                    <div key={day} className="flex items-center gap-4">
-                      <button onClick={() => setJamBuka(prev => prev.map((d, idx) => idx === i ? { ...d, active: !d.active } : d))} className="flex items-center gap-2 min-w-[110px]">
-                        {jamBuka[i].active ? <ToggleRight size={20} style={{ color: "#10B981" }} /> : <ToggleLeft size={20} style={{ color: v("--c-text-sec") }} />}
-                        <span className="text-sm" style={{ color: jamBuka[i].active ? v("--c-text") : v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{day}</span>
-                      </button>
-                      {jamBuka[i].active ? (
-                        <div className="flex items-center gap-2">
-                          <input type="time" value={jamBuka[i].buka} onChange={e => setJamBuka(prev => prev.map((d, idx) => idx === i ? { ...d, buka: e.target.value } : d))}
-                            className="px-3 py-1.5 rounded-lg text-sm outline-none" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }} />
-                          <span className="text-xs" style={{ color: v("--c-text-sec") }}>—</span>
-                          <input type="time" value={jamBuka[i].tutup} onChange={e => setJamBuka(prev => prev.map((d, idx) => idx === i ? { ...d, tutup: e.target.value } : d))}
-                            className="px-3 py-1.5 rounded-lg text-sm outline-none" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }} />
-                        </div>
-                      ) : (
-                        <span className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Tutup</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* BANNER */}
-          {activeTab === 1 && (
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "linear-gradient(to right,#1E3A5F,#F97316)", fontFamily: "'Inter',sans-serif" }}>
-                  <Plus size={14} /> Tambah Banner
-                </button>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {banners.map((b, i) => (
-                  <motion.div key={b.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-                    className="rounded-2xl overflow-hidden" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
-                    <div className="relative">
-                      <img src={b.image} alt={b.title} className="w-full h-32 object-cover" />
-                      <div className="absolute top-2 right-2 flex gap-1.5">
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: b.active ? "rgba(16,185,129,0.9)" : "rgba(100,116,139,0.8)", color: "#fff" }}>{b.active ? "Aktif" : "Nonaktif"}</span>
-                      </div>
-                      <div className="absolute top-2 left-2">
-                        <GripVertical size={14} className="text-white opacity-70 cursor-grab" />
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <p className="font-semibold text-sm" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>{b.title}</p>
-                      <p className="text-xs mt-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{b.subtitle}</p>
-                      <div className="flex items-center gap-2 mt-3">
-                        <button onClick={() => setBanners(prev => prev.map(bnn => bnn.id === b.id ? { ...bnn, active: !bnn.active } : bnn))}
-                          className="flex items-center gap-1.5 text-xs font-medium" style={{ color: b.active ? "#10B981" : v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
-                          {b.active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                          {b.active ? "Aktif" : "Nonaktif"}
-                        </button>
-                        <div className="flex gap-1.5 ml-auto">
-                          <button className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(59,111,212,0.1)", color: "#3B6FD4" }}><Edit2 size={12} /></button>
-                          <button className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444" }}><Trash2 size={12} /></button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
             </div>
           )}
 
           {/* HALAMAN STATIS */}
-          {activeTab === 2 && (
+          {activeTab === 1 && (
             <div className="rounded-2xl overflow-hidden" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
               {STATIC_PAGES.map((p, i) => (
                 <div key={p.slug} className="flex items-center justify-between p-5" style={{ borderBottom: i < STATIC_PAGES.length - 1 ? `1px solid ${v("--c-border")}` : "none" }}>
@@ -213,10 +210,10 @@ export function AdminPengaturan() {
           )}
 
           {/* TEMPLATE DESAIN */}
-          {activeTab === 3 && (
+          {activeTab === 2 && (
             <div className="space-y-4">
               <div className="flex justify-end">
-                <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "linear-gradient(to right,#1E3A5F,#F97316)", fontFamily: "'Inter',sans-serif" }}>
+                <button onClick={handleOpenCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(to right,#1E3A5F,#F97316)", fontFamily: "'Inter',sans-serif" }}>
                   <Plus size={14} /> Upload Template
                 </button>
               </div>
@@ -232,12 +229,13 @@ export function AdminPengaturan() {
                       </div>
                       <div className="flex items-center gap-2 mt-3">
                         <button onClick={() => setTemplates(prev => prev.map(tp => tp.id === t.id ? { ...tp, active: !tp.active } : tp))}
-                          className="flex items-center gap-1 text-xs" style={{ color: t.active ? "#10B981" : v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                          className="flex items-center gap-1 text-xs cursor-pointer" style={{ color: t.active ? "#10B981" : v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
                           {t.active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
                         </button>
                         <div className="flex gap-1.5 ml-auto">
-                          <button className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(59,111,212,0.1)", color: "#3B6FD4" }}><Eye size={12} /></button>
-                          <button className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444" }}><Trash2 size={12} /></button>
+                          <button onClick={() => handleViewTemplate(t.link || "")} className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-105" style={{ background: "rgba(59,111,212,0.1)", color: "#3B6FD4" }} title="Lihat Template"><Eye size={12} /></button>
+                          <button onClick={() => handleOpenEdit(t)} className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-105" style={{ background: "rgba(249,115,22,0.1)", color: "#F97316" }} title="Edit Template"><Edit2 size={12} /></button>
+                          <button onClick={() => handleDeleteTemplate(t.id)} className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:scale-105" style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444" }} title="Hapus Template"><Trash2 size={12} /></button>
                         </div>
                       </div>
                     </div>
@@ -248,7 +246,7 @@ export function AdminPengaturan() {
           )}
 
           {/* SISTEM */}
-          {activeTab === 4 && (
+          {activeTab === 3 && (
             <div className="space-y-5">
               {/* Mode Maintenance */}
               <div className="rounded-2xl p-6" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
@@ -295,21 +293,6 @@ export function AdminPengaturan() {
                 </div>
               </div>
 
-              {/* Notifikasi Email */}
-              <div className="rounded-2xl p-6" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
-                <h2 className="font-semibold mb-5" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Konfigurasi Email SMTP</h2>
-                <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                  {["SMTP Host", "SMTP Port", "Email Pengirim", "Password"].map(l => (
-                    <div key={l}>
-                      <label className="text-xs font-semibold block mb-1.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{l}</label>
-                      <input type={l === "Password" ? "password" : "text"} placeholder={l} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }} />
-                    </div>
-                  ))}
-                </div>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: "rgba(59,111,212,0.1)", color: "#3B6FD4", fontFamily: "'Inter',sans-serif" }}>
-                  <Send size={13} /> Kirim Email Test
-                </button>
-              </div>
 
               {/* Backup */}
               <div className="rounded-2xl p-6 flex items-center justify-between" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
@@ -325,6 +308,134 @@ export function AdminPengaturan() {
           )}
         </div>
       </div>
+
+      {/* CRUD Modal for Template Desain */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md rounded-2xl p-6 overflow-hidden shadow-2xl border"
+              style={{
+                background: v("--c-card"),
+                borderColor: v("--c-border"),
+                color: v("--c-text")
+              }}
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-xl hover:bg-black/10 dark:hover:bg-white/10 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+
+              <h3 className="text-lg font-semibold font-['Poppins',sans-serif] mb-5">
+                {modalMode === "create" ? "Upload Template Baru" : "Edit Detail Template"}
+              </h3>
+
+              <form onSubmit={handleSaveTemplate} className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold block mb-1.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                    Nama Template
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                    placeholder="Contoh: Kartu Nama Modern"
+                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                    style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold block mb-1.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                    Kategori
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formCategory}
+                    onChange={e => setFormCategory(e.target.value)}
+                    placeholder="Contoh: Kartu Nama, Banner, Brosur"
+                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                    style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold block mb-1.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                    Image URL Template
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={formImage}
+                    onChange={e => setFormImage(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                    style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold block mb-1.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                    Link untuk Mengakses Template
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={formLink}
+                    onChange={e => setFormLink(e.target.value)}
+                    placeholder="https://figma.com/... atau link lainnya"
+                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                    style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}
+                  />
+                </div>
+
+                <div className="pt-2 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer border"
+                    style={{
+                      borderColor: v("--c-border"),
+                      color: v("--c-text-sec"),
+                      fontFamily: "'Inter',sans-serif"
+                    }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl text-xs font-semibold text-white cursor-pointer"
+                    style={{
+                      background: "linear-gradient(to right,#1E3A5F,#F97316)",
+                      fontFamily: "'Inter',sans-serif"
+                    }}
+                  >
+                    {modalMode === "create" ? "Upload Template" : "Simpan Perubahan"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
