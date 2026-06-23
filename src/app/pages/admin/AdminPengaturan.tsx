@@ -270,47 +270,6 @@ export function AdminPengaturan() {
                 )}
               </div>
 
-              {/* API Integrasi */}
-              <div className="rounded-2xl p-6" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
-                <h2 className="font-semibold mb-5" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Integrasi API</h2>
-                <div className="space-y-4">
-                  {[
-                    { label: "Midtrans Server Key", val: "SB-Mid-server-xxxxxxxxxxxxxxxxxxxx", secret: true },
-                    { label: "Midtrans Client Key", val: "SB-Mid-client-xxxxxxxxxxxxxxxxxxxx", secret: true },
-                    { label: "Raja Ongkir API Key", val: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", secret: true },
-                    { label: "Cloudinary Cloud Name", val: "malikussaleh-adv", secret: false },
-                  ].map(({ label, val, secret }) => (
-                    <div key={label}>
-                      <label className="text-xs font-semibold block mb-1.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{label}</label>
-                      <div className="relative">
-                        <input type={secret && !showMidtransKey ? "password" : "text"} defaultValue={val} readOnly className="w-full pl-4 pr-10 py-2.5 rounded-xl text-sm outline-none font-mono" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'JetBrains Mono',monospace" }} />
-                        {secret && (
-                          <button onClick={() => setShowMidtransKey(!showMidtransKey)} className="absolute right-3.5 top-1/2 -translate-y-1/2" style={{ color: v("--c-text-sec") }}>
-                            {showMidtransKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Notifikasi Email */}
-              <div className="rounded-2xl p-6" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
-                <h2 className="font-semibold mb-5" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Konfigurasi Email SMTP</h2>
-                <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                  {["SMTP Host", "SMTP Port", "Email Pengirim", "Password"].map(l => (
-                    <div key={l}>
-                      <label className="text-xs font-semibold block mb-1.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{l}</label>
-                      <input type={l === "Password" ? "password" : "text"} placeholder={l} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }} />
-                    </div>
-                  ))}
-                </div>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: "rgba(59,111,212,0.1)", color: "#3B6FD4", fontFamily: "'Inter',sans-serif" }}>
-                  <Send size={13} /> Kirim Email Test
-                </button>
-              </div>
-
               {/* Backup */}
               <div className="rounded-2xl p-6 flex items-center justify-between" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
                 <div>

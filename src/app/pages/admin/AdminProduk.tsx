@@ -1607,10 +1607,11 @@ export function AdminProduk() {
             {filteredProducts.map((p, i) => (
               <motion.div key={p.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
                 className="rounded-2xl overflow-hidden" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
-                <div className="relative">
+                <div className="relative h-44 overflow-hidden" style={{ background: v("--c-bg-sec") }}>
                   <ImageWithFallback
                     src={p.images?.[0] || p.image}
                     alt={p.name}
+                    className="w-full h-full object-cover"
                   />
                   <div className="absolute top-2 left-2 flex gap-1.5">
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "rgba(0,0,0,0.6)", color: "#fff", fontFamily: "'Inter',sans-serif" }}>{p.category}</span>
@@ -2601,6 +2602,7 @@ export function AdminProduk() {
                         Foto Produk
                       </label>
 
+                      {/* Input file — tersembunyi, dipanggil via ref */}
                       <input
                         id="product-images"
                         type="file"
@@ -2608,92 +2610,76 @@ export function AdminProduk() {
                         accept="image/*"
                         className="hidden"
                         onChange={(e) => {
-                          const files = Array.from(
-                            e.target.files ?? []
-                          );
-
+                          const files = Array.from(e.target.files ?? []);
                           if (!files.length) return;
-
-                          setSelectedFiles((prev) => [
-                            ...prev,
-                            ...files,
-                          ]);
-
-                          const previews = files.map((file) =>
-                            URL.createObjectURL(file)
-                          );
-
+                          setSelectedFiles((prev) => [...prev, ...files]);
+                          const previews = files.map((file) => URL.createObjectURL(file));
                           setFormData((prev) => ({
                             ...prev,
                             images: [...prev.images, ...previews],
                           }));
-
                           e.target.value = "";
                         }}
                       />
 
-                      <label
-                        htmlFor="product-images"
-                        className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer block"
+                      {/* Area preview gambar yang sudah dipilih */}
+                      {formData.images.length > 0 && (
+                        <div className="grid grid-cols-3 gap-3 mb-3">
+                          {formData.images.map((img, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={img}
+                                alt={`Preview ${index + 1}`}
+                                className="w-full h-28 rounded-xl object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  URL.revokeObjectURL(img);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    images: prev.images.filter((_, i) => i !== index),
+                                  }));
+                                  setSelectedFiles((prev) =>
+                                    prev.filter((_, i) => i !== index)
+                                  );
+                                }}
+                                className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-white text-sm font-bold opacity-80 hover:opacity-100 transition-opacity"
+                                style={{ background: "#EF4444" }}
+                              >
+                                ×
+                              </button>
+                              {index === 0 && (
+                                <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-xs text-white font-semibold" style={{ background: "rgba(0,0,0,0.6)" }}>
+                                  Utama
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Tombol upload — terpisah dari area preview */}
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById("product-images")?.click()}
+                        className="w-full border-2 border-dashed rounded-xl py-5 flex flex-col items-center gap-2 transition-colors hover:opacity-80"
                         style={{
                           borderColor: v("--c-border"),
                           background: v("--c-bg-sec"),
+                          color: v("--c-text-sec"),
                         }}
                       >
-                        {formData.images.length > 0 ? (
-                          <div className="grid grid-cols-3 gap-3">
-                            {formData.images.map((img, index) => (
-                              <div
-                                key={index}
-                                className="relative"
-                              >
-                                <img
-                                  src={img}
-                                  alt={`Preview ${index + 1}`}
-                                  className="w-full h-28 rounded-xl object-cover"
-                                />
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-
-                                    URL.revokeObjectURL(img);
-
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      images: prev.images.filter(
-                                        (_, i) => i !== index
-                                      ),
-                                    }));
-
-                                    setSelectedFiles((prev) =>
-                                      prev.filter(
-                                        (_, i) => i !== index
-                                      )
-                                    );
-                                  }}
-                                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <>
-                            <Upload
-                              size={24}
-                              className="mx-auto mb-2"
-                            />
-
-                            <p>
-                              Klik untuk upload satu atau
-                              lebih foto
-                            </p>
-                          </>
-                        )}
-                      </label>
+                        <Upload size={22} />
+                        <span className="text-sm">
+                          {formData.images.length > 0
+                            ? "Tambah foto lagi"
+                            : "Klik untuk upload foto (bisa lebih dari 1)"}
+                        </span>
+                        <span className="text-xs" style={{ color: v("--c-text-sec"), opacity: 0.6 }}>
+                          JPG, PNG, WEBP
+                        </span>
+                      </button>
                     </div>
 
                     {/* Deskripsi */}

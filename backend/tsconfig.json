@@ -10,8 +10,6 @@
     "module": "commonjs",
     "target": "es2016",
     "esModuleInterop": true,
-    "moduleResolution": "bundler",
-    "types": [],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -36,7 +34,6 @@
 
     // Recommended Options
     "strict": true,
-    "jsx": "react-jsx",
     "verbatimModuleSyntax": false,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,

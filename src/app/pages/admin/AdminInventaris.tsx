@@ -37,8 +37,8 @@ interface MachineData {
   gimbalRange?: string;
   zoom?: string;
   rtkModule?: boolean;
-  thermalCamera?: string;
-  obstacleSensing?: string;
+  thermalCamera?: boolean;
+  obstacleSensing?: boolean;
   ipRating?: string;
 
   createdAt?: string;
@@ -82,8 +82,8 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
     gimbalRange: "",
     zoom: "",
     rtkModule: false,
-    thermalCamera: "",
-    obstacleSensing: "",
+    thermalCamera: false,
+    obstacleSensing: false,
     ipRating: "",
   });
 
@@ -376,6 +376,12 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
                       maxSpeed: e.target.value,
                     })
                   }
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
                 />
 
                 <input
@@ -388,10 +394,21 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
                       workWidth: e.target.value,
                     })
                   }
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
                 />
 
                 <select
                   className="w-full px-4 py-3 rounded-xl outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
                   value={formData.resolution ?? ""}
                   onChange={(e) =>
                     setFormData({
@@ -517,11 +534,18 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
                 <input
                   type="number"
                   placeholder="Berat (gram)"
+                  value={formData.weight ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      weight: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-3 rounded-xl outline-none"
                   style={{
-                    background:
-                      v("--c-bg-sec"),
+                    background: v("--c-bg-sec"),
                     border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
                   }}
                 />
 
@@ -536,6 +560,12 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
                         e.target.value,
                     })
                   }
+                  className="w-full px-4 py-3 rounded-xl outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
                 />
               </div>
 
@@ -559,6 +589,12 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
                         e.target.value,
                     })
                   }
+                  className="w-full px-4 py-3 rounded-xl outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
                 >
                   <option value="">
                     Sensor
@@ -577,6 +613,42 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
                   </option>
                 </select>
 
+                <input
+                  type="text"
+                  placeholder="Gimbal Range (contoh: -90° s/d +30°)"
+                  value={formData.gimbalRange ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      gimbalRange: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
+                />
+
+                <input
+                  type="text"
+                  placeholder="Zoom (contoh: 56x Hybrid Zoom)"
+                  value={formData.zoom ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      zoom: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
+                />
+
                 <select
                   value={formData.videoResolution ?? ""}
                   onChange={(e) =>
@@ -586,6 +658,12 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
                         e.target.value,
                     })
                   }
+                  className="w-full px-4 py-3 rounded-xl outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
                 >
                   <option value="">
                     Video Resolution
@@ -603,6 +681,24 @@ function AddEditModal({ isOpen, onClose, onSave, editData }: ModalProps) {
                     8K
                   </option>
                 </select>
+
+                <input
+                  type="text"
+                  placeholder="IP Rating (contoh: IP43)"
+                  value={formData.ipRating ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      ipRating: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl outline-none"
+                  style={{
+                    background: v("--c-bg-sec"),
+                    border: `1px solid ${v("--c-border")}`,
+                    color: v("--c-text"),
+                  }}
+                />
               </div>
 
               {/* FEATURES */}

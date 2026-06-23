@@ -1,97 +1,118 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import {
   Wallet, TrendingUp, Package, Inbox, Users, AlertTriangle,
-  ArrowUp, ArrowDown, Download, RefreshCw, ShoppingBag,
-  ShoppingCart, CreditCard, CheckCircle, XCircle, type LucideIcon,
+  ArrowUp, ArrowDown, Download, RefreshCw, ShoppingCart,
+  CheckCircle, XCircle, type LucideIcon,
 } from "lucide-react";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell, Legend, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Legend, AreaChart, Area,
 } from "recharts";
 import { v } from "../../components/pageUtils";
+import { useAuth } from "../../hooks/useAuth";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-/* ── Mock Data ──────────────────────────────────────────────── */
-const REVENUE_30 = Array.from({ length: 30 }, (_, i) => ({
-  day: `${i + 1}`,
-  revenue: Math.floor(Math.random() * 8000000) + 2000000,
-}));
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
 
-const WEEKLY_ORDERS = [
-  { week: "Mg 1", orders: 42 }, { week: "Mg 2", orders: 58 },
-  { week: "Mg 3", orders: 35 }, { week: "Mg 4", orders: 71 },
+/* ── Types (cocok dengan response GET /api/dashboard) ─────────── */
+type DashboardData = {
+  kpi: {
+    revenueToday: number;
+    revenueTodayTrendPct: number | null;
+    revenueThisMonth: number;
+    revenueThisMonthTrendPct: number | null;
+    activeOrders: number;
+    newOrdersToday: number;
+    newOrdersTodayTrendPct: number | null;
+    newCustomersToday: number;
+    newCustomersTodayTrendPct: number | null;
+  };
+  revenueTrend30: { day: string; revenue: number }[];
+  weeklyOrders: { week: string; orders: number }[];
+  topProducts: { name: string; qty: number }[];
+  customerTrend: { month: string; baru: number; kembali: number }[];
+  recentOrders: {
+    id: number;
+    customer: string;
+    product: string;
+    extraItems: number;
+    totalPrice: number;
+    status: "pending" | "processing" | "completed" | "cancelled";
+  }[];
+  recentCustomers: { name: string; email: string; orders: number; total: number; createdAt: string }[];
+  lowStockMaterials: { name: string; stock: number; threshold: number; unit: string }[];
+  liveFeed: { type: "new" | "processing" | "completed" | "cancelled"; text: string; time: string }[];
+};
+
+/* ── Static UI config (bukan data, cuma tampilan) ──────────────── */
+const KPI_CONFIG: {
+  key: keyof DashboardData["kpi"];
+  trendKey: keyof DashboardData["kpi"] | null;
+  label: string;
+  Icon: LucideIcon;
+  color: string;
+  bg: string;
+  path: string;
+  isCurrency: boolean;
+}[] = [
+  { key: "revenueToday", trendKey: "revenueTodayTrendPct", label: "Pendapatan Hari Ini", Icon: Wallet, color: "#10B981", bg: "rgba(16,185,129,0.1)", path: "/admin/laporan", isCurrency: true },
+  { key: "revenueThisMonth", trendKey: "revenueThisMonthTrendPct", label: "Pendapatan Bulan Ini", Icon: TrendingUp, color: "#2E7D32", bg: "rgba(46,125,50,0.1)", path: "/admin/laporan", isCurrency: true },
+  { key: "activeOrders", trendKey: null, label: "Total Pesanan Aktif", Icon: Package, color: "#F9A825", bg: "rgba(249,168,37,0.1)", path: "/admin/pesanan", isCurrency: false },
+  { key: "newOrdersToday", trendKey: "newOrdersTodayTrendPct", label: "Pesanan Baru Hari Ini", Icon: Inbox, color: "#06B6D4", bg: "rgba(6,182,212,0.1)", path: "/admin/pesanan", isCurrency: false },
+  { key: "newCustomersToday", trendKey: "newCustomersTodayTrendPct", label: "Customer Baru Hari Ini", Icon: Users, color: "#7C3AED", bg: "rgba(124,58,237,0.1)", path: "/admin/pengguna", isCurrency: false },
 ];
 
-const PAYMENT_DIST = [
-  { name: "Transfer Manual", value: 35, color: "#2E7D32" },
-  { name: "QRIS",            value: 28, color: "#F9A825" },
-  { name: "Virtual Account", value: 22, color: "#7C3AED" },
-  { name: "GoPay/OVO",       value: 15, color: "#10B981" },
-];
-
-const TOP_PRODUCTS = [
-  { name: "Banner Vinyl",  qty: 184 },
-  { name: "Kartu Nama UV", qty: 156 },
-  { name: "Mug Custom",    qty: 132 },
-  { name: "Brosur A5",     qty: 120 },
-  { name: "Stiker Vinyl",  qty: 98  },
-  { name: "Spanduk",       qty: 87  },
-  { name: "Paper Bag",     qty: 75  },
-  { name: "Undangan",      qty: 63  },
-  { name: "Backdrop",      qty: 51  },
-  { name: "X-Banner",      qty: 44  },
-];
-
-const CUSTOMER_TREND = Array.from({ length: 6 }, (_, i) => ({
-  month: ["Sep", "Okt", "Nov", "Des", "Jan", "Feb"][i],
-  baru: Math.floor(Math.random() * 40) + 10,
-  kembali: Math.floor(Math.random() * 80) + 30,
-}));
-
-const LIVE_FEED: { Icon: LucideIcon; text: string; time: string; color: string }[] = [
-  { Icon: ShoppingCart, text: "Pesanan baru dari Siti Rahayu — Banner Vinyl 100×200", time: "Baru saja",    color: "#2E7D32" },
-  { Icon: CreditCard,   text: "Pembayaran dikonfirmasi #ORD-2025-0048",               time: "2 mnt lalu",  color: "#10B981" },
-  { Icon: CheckCircle,  text: "Pesanan #ORD-2025-0042 selesai diproduksi",            time: "5 mnt lalu",  color: "#10B981" },
-  { Icon: ShoppingCart, text: "Pesanan baru dari Ahmad Fauzi — Kartu Nama (500)",     time: "8 mnt lalu",  color: "#2E7D32" },
-  { Icon: XCircle,      text: "Pesanan #ORD-2025-0039 dibatalkan oleh customer",      time: "12 mnt lalu", color: "#EF4444" },
-  { Icon: CreditCard,   text: "Pembayaran dikonfirmasi #ORD-2025-0044",               time: "15 mnt lalu", color: "#10B981" },
-  { Icon: ShoppingCart, text: "Pesanan baru dari Dewi Fatimah — Undangan 200pcs",     time: "20 mnt lalu", color: "#2E7D32" },
-  { Icon: CheckCircle,  text: "Pesanan #ORD-2025-0040 selesai diproduksi",            time: "28 mnt lalu", color: "#10B981" },
-];
-
-const RECENT_ORDERS = [
-  { id: "ORD-2025-0048", customer: "Siti Rahayu",    product: "Banner Vinyl",      total: "Rp 240.000",   status: "Menunggu Bayar" },
-  { id: "ORD-2025-0047", customer: "Ahmad Fauzi",    product: "Kartu Nama UV",     total: "Rp 175.000",   status: "Diproses" },
-  { id: "ORD-2025-0046", customer: "Dewi Fatimah",   product: "Undangan 200pcs",   total: "Rp 1.200.000", status: "Diproses" },
-  { id: "ORD-2025-0045", customer: "Budi Santoso",   product: "Mug Custom (10)",   total: "Rp 350.000",   status: "Dikirim" },
-  { id: "ORD-2025-0044", customer: "Rizky Pratama",  product: "Spanduk 3×1m",      total: "Rp 180.000",   status: "Selesai" },
-];
-
-const RECENT_CUSTOMERS = [
-  { name: "Siti Rahayu",     email: "siti@email.com",   orders: 1, total: "Rp 240.000",   joined: "Hari ini" },
-  { name: "Dewi Fatimah",    email: "dewi@email.com",   orders: 3, total: "Rp 2.100.000", joined: "Kemarin" },
-  { name: "Rizky Pratama",   email: "rizky@email.com",  orders: 5, total: "Rp 890.000",   joined: "3 hari lalu" },
-  { name: "Nurul Hidayah",   email: "nurul@email.com",  orders: 2, total: "Rp 560.000",   joined: "5 hari lalu" },
-  { name: "Muhammad Iqbal",  email: "iqbal@email.com",  orders: 8, total: "Rp 3.400.000", joined: "1 mgg lalu" },
-];
+const STATUS_MAP: Record<string, string> = {
+  pending: "Menunggu Bayar",
+  processing: "Diproses",
+  completed: "Selesai",
+  cancelled: "Dibatalkan",
+};
 
 const STATUS_COLOR: Record<string, string> = {
   "Menunggu Bayar": "#EAB308",
-  "Diproses":       "#2E7D32",
-  "Dikirim":        "#7C3AED",
-  "Selesai":        "#10B981",
-  "Dibatalkan":     "#EF4444",
+  "Diproses": "var(--c-primary)",
+  "Selesai": "#10B981",
+  "Dibatalkan": "#EF4444",
 };
 
-const KPI_CARDS = [
-  { label: "Pendapatan Hari Ini",   value: "Rp 4,2 Jt", Icon: Wallet,        color: "#10B981", bg: "rgba(16,185,129,0.1)",  trend: "+12%", up: true,  path: "/admin/keuangan" },
-  { label: "Pendapatan Bulan Ini",  value: "Rp 87,6 Jt", Icon: TrendingUp,   color: "#2E7D32", bg: "rgba(46,125,50,0.1)",   trend: "+8%",  up: true,  path: "/admin/laporan" },
-  { label: "Total Pesanan Aktif",   value: "23",          Icon: Package,      color: "#F9A825", bg: "rgba(249,168,37,0.1)",  trend: "+5%",  up: true,  path: "/admin/pesanan" },
-  { label: "Pesanan Baru Hari Ini", value: "7",           Icon: Inbox,        color: "#06B6D4", bg: "rgba(6,182,212,0.1)",   trend: "-2%",  up: false, path: "/admin/pesanan" },
-  { label: "Customer Baru",         value: "14",          Icon: Users,        color: "#7C3AED", bg: "rgba(124,58,237,0.1)",  trend: "+18%", up: true,  path: "/admin/pengguna" },
-  { label: "Pesanan Terlambat",     value: "3",           Icon: AlertTriangle,color: "#EF4444", bg: "rgba(239,68,68,0.1)",   trend: "-1",   up: false, path: "/admin/pesanan" },
-];
+const FEED_ICON: Record<DashboardData["liveFeed"][number]["type"], { Icon: LucideIcon; color: string }> = {
+  new: { Icon: ShoppingCart, color: "#2E7D32" },
+  processing: { Icon: RefreshCw, color: "var(--c-primary)" },
+  completed: { Icon: CheckCircle, color: "#10B981" },
+  cancelled: { Icon: XCircle, color: "#EF4444" },
+};
+
+/* ── Helpers ────────────────────────────────────────────────────── */
+const formatRupiah = (n: number) =>
+  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
+
+const formatCompactRupiah = (n: number) =>
+  n >= 1_000_000 ? `Rp ${(n / 1_000_000).toFixed(1)} Jt` : formatRupiah(n);
+
+const formatRelativeTime = (iso: string) => {
+  const diffMin = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return "Baru saja";
+  if (diffMin < 60) return `${diffMin} mnt lalu`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} jam lalu`;
+  return `${Math.floor(diffHour / 24)} hari lalu`;
+};
+
+const formatJoined = (iso: string) => {
+  const diffDay = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (diffDay <= 0) return "Hari ini";
+  if (diffDay === 1) return "Kemarin";
+  if (diffDay < 7) return `${diffDay} hari lalu`;
+  return `${Math.floor(diffDay / 7)} mgg lalu`;
+};
+
+const todayLabel = new Date().toLocaleDateString("id-ID", {
+  weekday: "long", day: "2-digit", month: "long", year: "numeric",
+});
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -100,22 +121,182 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <p className="text-xs font-semibold mb-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{label}</p>
       {payload.map((p: any, idx: number) => (
         <p key={`${p.name}-${idx}`} className="text-sm font-bold" style={{ color: p.color, fontFamily: "'Inter',sans-serif" }}>
-          {typeof p.value === "number" && p.value > 10000
-            ? `Rp ${(p.value / 1000000).toFixed(1)} Jt`
-            : p.value}
+          {typeof p.value === "number" && p.value > 10000 ? formatCompactRupiah(p.value) : p.value}
         </p>
       ))}
     </div>
   );
 };
 
+/* ── Component ──────────────────────────────────────────────────── */
 export function AdminDashboard() {
-  const [, setRefreshing] = useState(false);
+  const { authHeader } = useAuth();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+
+  const fetchDashboard = useCallback(async () => {
+    try {
+      setError("");
+      const res = await fetch(`${API}/api/dashboard`, { headers: authHeader });
+      if (!res.ok) throw new Error("Gagal mengambil data dashboard");
+      const json: DashboardData = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error(err);
+      setError("Gagal memuat data dashboard. Coba refresh.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [authHeader]);
+
+  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    fetchDashboard();
   };
+
+  const handleExportPDF = () => {
+    if (!data) return;
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const today = new Date().toLocaleDateString("id-ID", {
+      weekday: "long", day: "2-digit", month: "long", year: "numeric",
+    });
+    const formatRp = (n: number) =>
+      new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
+
+    // ── Header ──
+    doc.setFillColor(46, 125, 50);
+    doc.rect(0, 0, 210, 28, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("Laporan Dashboard Admin", 14, 12);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(today, 14, 21);
+    doc.text(`Diekspor: ${new Date().toLocaleTimeString("id-ID")}`, 150, 21);
+    doc.setTextColor(0, 0, 0);
+
+    // ── KPI Summary ──
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Ringkasan KPI", 14, 36);
+    autoTable(doc, {
+      startY: 40,
+      head: [["Metrik", "Nilai"]],
+      body: [
+        ["Pendapatan Hari Ini",   formatRp(data.kpi.revenueToday)],
+        ["Pendapatan Bulan Ini",  formatRp(data.kpi.revenueThisMonth)],
+        ["Total Pesanan Aktif",   String(data.kpi.activeOrders)],
+        ["Pesanan Baru Hari Ini", String(data.kpi.newOrdersToday)],
+        ["Customer Baru Hari Ini",String(data.kpi.newCustomersToday)],
+      ],
+      styles:     { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [46, 125, 50], textColor: 255, fontStyle: "bold" },
+      columnStyles: { 1: { fontStyle: "bold" } },
+      alternateRowStyles: { fillColor: [245, 250, 245] },
+    });
+
+    // ── Trend Pendapatan 30 Hari ──
+    const afterKPI = (doc as any).lastAutoTable.finalY + 8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Trend Pendapatan 30 Hari Terakhir", 14, afterKPI);
+    autoTable(doc, {
+      startY: afterKPI + 4,
+      head: [["Tanggal", "Pendapatan (Rp)"]],
+      body: data.revenueTrend30.map(d => [d.day, formatRp(d.revenue)]),
+      styles:     { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [46, 125, 50], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 250, 245] },
+    });
+
+    // ── Pesanan Terbaru (halaman baru) ──
+    doc.addPage();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text("5 Pesanan Terbaru", 14, 18);
+    autoTable(doc, {
+      startY: 22,
+      head: [["No. Pesanan", "Customer", "Produk", "Total", "Status"]],
+      body: data.recentOrders.map(o => [
+        `ORD-${String(o.id).padStart(4, "0")}`,
+        o.customer,
+        o.product + (o.extraItems > 0 ? ` +${o.extraItems} lainnya` : ""),
+        formatRp(o.totalPrice),
+        { pending: "Menunggu Bayar", processing: "Diproses", completed: "Selesai", cancelled: "Dibatalkan" }[o.status] ?? o.status,
+      ]),
+      styles:     { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [46, 125, 50], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 250, 245] },
+    });
+
+    // ── Produk Terlaris ──
+    const afterOrders = (doc as any).lastAutoTable.finalY + 8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Produk Terlaris", 14, afterOrders);
+    autoTable(doc, {
+      startY: afterOrders + 4,
+      head: [["Produk", "Qty Terjual"]],
+      body: data.topProducts.map(p => [p.name, String(p.qty)]),
+      styles:     { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [46, 125, 50], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 250, 245] },
+    });
+
+    // ── Customer Terbaru ──
+    const afterProducts = (doc as any).lastAutoTable.finalY + 8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("5 Customer Terbaru", 14, afterProducts);
+    autoTable(doc, {
+      startY: afterProducts + 4,
+      head: [["Nama", "Email", "Pesanan", "Total Belanja"]],
+      body: data.recentCustomers.map(c => [c.name, c.email, String(c.orders), formatRp(c.total)]),
+      styles:     { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [46, 125, 50], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 250, 245] },
+    });
+
+    // ── Footer ──
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Halaman ${i} dari ${pageCount}`, 14, 290);
+      doc.text("Dokumen ini digenerate otomatis oleh sistem", 105, 290, { align: "center" });
+    }
+
+    doc.save(`dashboard-laporan-${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  if (loading) {
+    return (
+      <div className="p-5 md:p-7 flex items-center justify-center" style={{ background: v("--c-bg"), minHeight: "100vh" }}>
+        <p className="text-sm" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Memuat dashboard...</p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="p-5 md:p-7 flex flex-col items-center justify-center gap-3" style={{ background: v("--c-bg"), minHeight: "100vh" }}>
+        <p className="text-sm" style={{ color: "#EF4444", fontFamily: "'Inter',sans-serif" }}>{error || "Data tidak tersedia"}</p>
+        <button onClick={fetchDashboard} className="px-4 py-2 rounded-xl text-sm font-semibold text-white"
+          style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>
+          Coba Lagi
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-5 md:p-7 space-y-6" style={{ background: v("--c-bg"), minHeight: "100vh" }}>
@@ -126,41 +307,54 @@ export function AdminDashboard() {
             Dashboard Admin
           </h1>
           <p className="text-sm mt-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
-            Selasa, 24 Februari 2026 — Selamat datang, Super Admin!
+            {todayLabel} — Selamat datang kembali!
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={handleRefresh} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all duration-200"
+          <button onClick={handleRefresh} disabled={refreshing}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all duration-200 disabled:opacity-60"
             style={{ background: v("--c-bg-sec"), color: v("--c-text-sec"), border: `1px solid ${v("--c-border")}`, fontFamily: "'Inter',sans-serif" }}>
-            <RefreshCw size={14} /> Refresh
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} /> Refresh
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-white"
+          <button
+            onClick={handleExportPDF}
+            disabled={!data}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-white disabled:opacity-50 transition-all"
             style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>
-            <Download size={14} /> Export Laporan
+            <Download size={14} /> Export PDF
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {KPI_CARDS.map(({ label, value, Icon, color, bg, trend, up, path }, i) => (
-          <motion.div key={label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-            whileHover={{ y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>
-            <Link to={path} className="block rounded-2xl p-4 transition-all duration-200"
-              style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: bg }}>
-                  <Icon size={16} style={{ color }} />
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {KPI_CONFIG.map(({ key, trendKey, label, Icon, color, bg, path, isCurrency }, i) => {
+          const value = data.kpi[key] as number;
+          const trend = trendKey ? (data.kpi[trendKey] as number | null) : null;
+          return (
+            <motion.div key={key} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+              whileHover={{ y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>
+              <Link to={path} className="block rounded-2xl p-4 transition-all duration-200"
+                style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: bg }}>
+                    <Icon size={16} style={{ color }} />
+                  </div>
+                  {trend !== null && (
+                    <div className="flex items-center gap-0.5 text-xs font-semibold"
+                      style={{ color: trend >= 0 ? "#10B981" : "#EF4444", fontFamily: "'Inter',sans-serif" }}>
+                      {trend >= 0 ? <ArrowUp size={11} /> : <ArrowDown size={11} />} {Math.abs(trend)}%
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-0.5 text-xs font-semibold" style={{ color: up ? "#10B981" : "#EF4444", fontFamily: "'Inter',sans-serif" }}>
-                  {up ? <ArrowUp size={11} /> : <ArrowDown size={11} />} {trend}
-                </div>
-              </div>
-              <p className="font-['Poppins',sans-serif] font-bold" style={{ fontSize: "1.3rem", color: v("--c-text"), lineHeight: 1 }}>{value}</p>
-              <p className="text-xs mt-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{label}</p>
-            </Link>
-          </motion.div>
-        ))}
+                <p className="font-['Poppins',sans-serif] font-bold" style={{ fontSize: "1.2rem", color: v("--c-text"), lineHeight: 1 }}>
+                  {isCurrency ? formatCompactRupiah(value) : value}
+                </p>
+                <p className="text-xs mt-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{label}</p>
+              </Link>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Revenue Chart */}
@@ -168,116 +362,79 @@ export function AdminDashboard() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="font-semibold" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Trend Pendapatan 30 Hari</h2>
-            <p className="text-xs mt-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Update real-time setiap hari</p>
+            <p className="text-xs mt-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Tidak termasuk pesanan yang dibatalkan</p>
           </div>
-          <span className="px-2.5 py-1 rounded-lg text-xs font-semibold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", fontFamily: "'Inter',sans-serif" }}>+8% bulan ini</span>
         </div>
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={REVENUE_30}>
+          <AreaChart data={data.revenueTrend30}>
             <defs>
               <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#2E7D32" stopOpacity={0.3} />
+                <stop offset="5%" stopColor="#2E7D32" stopOpacity={0.3} />
                 <stop offset="95%" stopColor="#2E7D32" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.1)" />
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#64748B" }} />
-            <YAxis tick={{ fontSize: 10, fill: "#64748B" }} tickFormatter={val => `${(val / 1000000).toFixed(0)}Jt`} />
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#64748B" }} interval={2} />
+            <YAxis tick={{ fontSize: 10, fill: "#64748B" }} tickFormatter={(val) => `${(val / 1000000).toFixed(0)}Jt`} />
             <Tooltip content={<CustomTooltip />} />
             <Area type="monotone" dataKey="revenue" stroke="#2E7D32" strokeWidth={2} fill="url(#revGrad)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid lg:grid-cols-2 gap-5">
-        {/* Weekly Orders */}
+      {/* Charts Row 2: Volume Pesanan + Produk Terlaris + Customer Trend (3 kolom, tidak ada lagi Distribusi Pembayaran) */}
+      <div className="grid lg:grid-cols-3 gap-5">
         <div className="rounded-2xl p-5" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
-          <h2 className="font-semibold mb-4" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Volume Pesanan per Minggu</h2>
+          <h2 className="font-semibold mb-4" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Volume Pesanan / Minggu</h2>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={WEEKLY_ORDERS}>
+            <BarChart data={data.weeklyOrders}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.1)" />
               <XAxis dataKey="week" tick={{ fontSize: 11, fill: "#64748B" }} />
-              <YAxis tick={{ fontSize: 11, fill: "#64748B" }} />
+              <YAxis tick={{ fontSize: 11, fill: "#64748B" }} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="orders" fill="#F9A825" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Payment Distribution */}
         <div className="rounded-2xl p-5" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
-          <h2 className="font-semibold mb-4" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Distribusi Metode Pembayaran</h2>
-          <div className="flex items-center gap-4">
-            <ResponsiveContainer width="55%" height={160}>
-              <PieChart>
-                <Pie data={PAYMENT_DIST} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={3}>
-                  {PAYMENT_DIST.map((entry, i) => (
-                    <Cell key={`cell-${entry.name}`} fill={entry.color} />
-                  ))}
-                </Pie>
+          <h2 className="font-semibold mb-4" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Produk Terlaris</h2>
+          {data.topProducts.length === 0 ? (
+            <p className="text-xs text-center py-10" style={{ color: v("--c-text-sec") }}>Belum ada data penjualan</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={data.topProducts} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.1)" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "#64748B" }} allowDecimals={false} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fill: "#64748B" }} width={80} />
                 <Tooltip content={<CustomTooltip />} />
-              </PieChart>
+                <Bar dataKey="qty" fill="#1B5E20" radius={[0, 6, 6, 0]} />
+              </BarChart>
             </ResponsiveContainer>
-            <div className="flex-1 space-y-2">
-              {PAYMENT_DIST.map(({ name, value, color }) => (
-                <div key={name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
-                    <span className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{name}</span>
-                  </div>
-                  <span className="text-xs font-semibold" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{value}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Charts Row 3 */}
-      <div className="grid lg:grid-cols-2 gap-5">
-        {/* Top Products — defs at chart root, NOT inside <Bar> */}
-        <div className="rounded-2xl p-5" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
-          <h2 className="font-semibold mb-4" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>10 Produk Terlaris</h2>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={TOP_PRODUCTS} layout="vertical">
-              <defs>
-                <linearGradient id="prodGrad" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%"   stopColor="#1B5E20" />
-                  <stop offset="100%" stopColor="#F9A825" />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.1)" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: "#64748B" }} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "#64748B" }} width={80} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="qty" fill="url(#prodGrad)" radius={[0, 6, 6, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          )}
         </div>
 
-        {/* Customer Trend */}
         <div className="rounded-2xl p-5" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
           <h2 className="font-semibold mb-4" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Customer Baru vs Kembali</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={CUSTOMER_TREND}>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={data.customerTrend}>
               <defs>
                 <linearGradient id="newCust" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#F9A825" stopOpacity={0.3} />
+                  <stop offset="5%" stopColor="#F9A825" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#F9A825" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="retCust" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#2E7D32" stopOpacity={0.3} />
+                  <stop offset="5%" stopColor="#2E7D32" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#2E7D32" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.1)" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748B" }} />
-              <YAxis tick={{ fontSize: 11, fill: "#64748B" }} />
+              <YAxis tick={{ fontSize: 11, fill: "#64748B" }} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Area type="monotone" dataKey="baru"    name="Customer Baru"    stroke="#F9A825" fill="url(#newCust)" strokeWidth={2} />
-              <Area type="monotone" dataKey="kembali" name="Customer Kembali" stroke="#2E7D32" fill="url(#retCust)" strokeWidth={2} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area type="monotone" dataKey="baru" name="Baru" stroke="#F9A825" fill="url(#newCust)" strokeWidth={2} />
+              <Area type="monotone" dataKey="kembali" name="Kembali" stroke="#2E7D32" fill="url(#retCust)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -285,8 +442,8 @@ export function AdminDashboard() {
 
       {/* Bottom: Tables + Live Feed */}
       <div className="grid lg:grid-cols-3 gap-5">
-        {/* Recent Orders + Customers + Alerts */}
         <div className="lg:col-span-2 space-y-5">
+          {/* Recent Orders */}
           <div className="rounded-2xl overflow-hidden" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${v("--c-border")}` }}>
               <h2 className="font-semibold" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>5 Pesanan Terbaru</h2>
@@ -296,25 +453,34 @@ export function AdminDashboard() {
               <table className="w-full">
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${v("--c-border")}` }}>
-                    {["No. Pesanan", "Customer", "Produk", "Total", "Status"].map(h => (
+                    {["No. Pesanan", "Customer", "Produk", "Total", "Status"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {RECENT_ORDERS.map((o, i) => (
-                    <tr key={o.id} style={{ borderBottom: i < RECENT_ORDERS.length - 1 ? `1px solid ${v("--c-border")}` : "none" }}>
-                      <td className="px-4 py-3 text-xs font-mono font-semibold" style={{ color: v("--c-primary") }}>{o.id}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{o.customer}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{o.product}</td>
-                      <td className="px-4 py-3 text-xs font-semibold" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{o.total}</td>
-                      <td className="px-4 py-3">
-                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: STATUS_COLOR[o.status] + "20", color: STATUS_COLOR[o.status], fontFamily: "'Inter',sans-serif" }}>
-                          {o.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {data.recentOrders.length === 0 ? (
+                    <tr><td colSpan={5} className="px-4 py-6 text-center text-xs" style={{ color: v("--c-text-sec") }}>Belum ada pesanan</td></tr>
+                  ) : data.recentOrders.map((o, i) => {
+                    const label = STATUS_MAP[o.status] ?? o.status;
+                    return (
+                      <tr key={o.id} style={{ borderBottom: i < data.recentOrders.length - 1 ? `1px solid ${v("--c-border")}` : "none" }}>
+                        <td className="px-4 py-3 text-xs font-mono font-semibold" style={{ color: v("--c-primary") }}>
+                          #ORD-{String(o.id).padStart(4, "0")}
+                        </td>
+                        <td className="px-4 py-3 text-xs" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{o.customer}</td>
+                        <td className="px-4 py-3 text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                          {o.product}{o.extraItems > 0 ? ` +${o.extraItems} lainnya` : ""}
+                        </td>
+                        <td className="px-4 py-3 text-xs font-semibold" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{formatRupiah(o.totalPrice)}</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: (STATUS_COLOR[label] ?? "#888") + "20", color: STATUS_COLOR[label] ?? "#888", fontFamily: "'Inter',sans-serif" }}>
+                            {label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -330,14 +496,16 @@ export function AdminDashboard() {
               <table className="w-full">
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${v("--c-border")}` }}>
-                    {["Nama", "Email", "Pesanan", "Total Belanja", "Bergabung"].map(h => (
+                    {["Nama", "Email", "Pesanan", "Total Belanja", "Bergabung"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {RECENT_CUSTOMERS.map((c, i) => (
-                    <tr key={c.email} style={{ borderBottom: i < RECENT_CUSTOMERS.length - 1 ? `1px solid ${v("--c-border")}` : "none" }}>
+                  {data.recentCustomers.length === 0 ? (
+                    <tr><td colSpan={5} className="px-4 py-6 text-center text-xs" style={{ color: v("--c-text-sec") }}>Belum ada customer</td></tr>
+                  ) : data.recentCustomers.map((c, i) => (
+                    <tr key={c.email} style={{ borderBottom: i < data.recentCustomers.length - 1 ? `1px solid ${v("--c-border")}` : "none" }}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
@@ -349,8 +517,8 @@ export function AdminDashboard() {
                       </td>
                       <td className="px-4 py-3 text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{c.email}</td>
                       <td className="px-4 py-3 text-xs text-center font-semibold" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{c.orders}</td>
-                      <td className="px-4 py-3 text-xs font-semibold" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{c.total}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{c.joined}</td>
+                      <td className="px-4 py-3 text-xs font-semibold" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{formatRupiah(c.total)}</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{formatJoined(c.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -358,48 +526,55 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          {/* Alerts */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.25)" }}>
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(234,179,8,0.15)" }}>
-                <ShoppingBag size={15} style={{ color: "#EAB308" }} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold" style={{ color: "#EAB308", fontFamily: "'Poppins',sans-serif" }}>Pesanan Menunggu</p>
-                <p className="text-xs mt-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>5 pesanan belum diambil operator &gt;24 jam</p>
-                <Link to="/admin/pesanan" className="text-xs font-semibold mt-1 inline-block" style={{ color: "#EAB308" }}>Lihat Sekarang →</Link>
-              </div>
-            </div>
+          {/* Alert: Stok Bahan Menipis (satu-satunya alert yang datanya nyata) */}
+          {data.lowStockMaterials.length > 0 ? (
             <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(239,68,68,0.15)" }}>
                 <AlertTriangle size={15} style={{ color: "#EF4444" }} />
               </div>
               <div>
                 <p className="text-sm font-semibold" style={{ color: "#EF4444", fontFamily: "'Poppins',sans-serif" }}>Stok Bahan Menipis</p>
-                <p className="text-xs mt-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Flexi Korea, Vinyl — di bawah threshold</p>
-                <Link to="/admin/produk" className="text-xs font-semibold mt-1 inline-block" style={{ color: "#EF4444" }}>Lihat Stok →</Link>
+                <p className="text-xs mt-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                  {data.lowStockMaterials.map((m) => m.name).join(", ")} — di bawah threshold
+                </p>
+                <Link to="/admin/inventaris" className="text-xs font-semibold mt-1 inline-block" style={{ color: "#EF4444" }}>Lihat Stok →</Link>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)" }}>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(16,185,129,0.15)" }}>
+                <CheckCircle size={15} style={{ color: "#10B981" }} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: "#10B981", fontFamily: "'Poppins',sans-serif" }}>Stok Bahan Aman</p>
+                <p className="text-xs mt-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Semua bahan masih di atas threshold</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Live Activity Feed */}
         <div className="rounded-2xl overflow-hidden" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}`, height: "fit-content" }}>
           <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${v("--c-border")}` }}>
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <h2 className="font-semibold" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Aktivitas Live</h2>
+            <h2 className="font-semibold" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>Aktivitas Terbaru</h2>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: 500 }}>
-            {LIVE_FEED.map((item, i) => (
-              <motion.div key={`feed-${i}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-                className="px-4 py-3 flex items-start gap-3" style={{ borderBottom: i < LIVE_FEED.length - 1 ? `1px solid ${v("--c-border")}` : "none" }}>
-                <item.Icon size={16} className="flex-shrink-0 mt-0.5" style={{ color: item.color }} aria-hidden="true" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif", lineHeight: 1.5 }}>{item.text}</p>
-                  <p className="text-xs mt-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{item.time}</p>
-                </div>
-              </motion.div>
-            ))}
+            {data.liveFeed.length === 0 ? (
+              <p className="text-xs text-center py-10" style={{ color: v("--c-text-sec") }}>Belum ada aktivitas</p>
+            ) : data.liveFeed.map((item, i) => {
+              const { Icon, color } = FEED_ICON[item.type];
+              return (
+                <motion.div key={`feed-${i}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
+                  className="px-4 py-3 flex items-start gap-3" style={{ borderBottom: i < data.liveFeed.length - 1 ? `1px solid ${v("--c-border")}` : "none" }}>
+                  <Icon size={16} className="flex-shrink-0 mt-0.5" style={{ color }} aria-hidden="true" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif", lineHeight: 1.5 }}>{item.text}</p>
+                    <p className="text-xs mt-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{formatRelativeTime(item.time)}</p>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </div>

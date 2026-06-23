@@ -1,34 +1,184 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id           Int      @id @default(autoincrement())
-  fullName     String
-  email        String   @unique
-  phoneNumber  String   @unique
-  password     String
-  referralCode String?
-  role         String   @default("user")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  customer
+  operator
+  admin
+}
+
+enum UserStatus {
+  active
+  blocked
+}
+
+enum OrderStatus {
+  pending
+  processing
+  completed
+  cancelled
+}
+
+enum DeviceType {
+  machine
+  drone
+}
+
+enum DeviceStatus {
+  active
+  maintenance
+  inactive
+}
+
+enum ProductionStage {
+  verifikasi_file
+  pracetak
+  sedang_dicetak
+  finishing
+  qc
+  siap_kirim
+}
+
+enum PaymentStatus {
+  unpaid
+  paid
+  rejected
+}
+
+enum FlashSaleStatus {
+  upcoming
+  active
+  ended
+}
+
+enum DiscountType {
+  percentage
+  nominal
+}
+
+model User {
+  id          Int    @id @default(autoincrement())
+  fullName    String
+  email       String @unique
+  phoneNumber String @unique
+  password    String
+
+  avatar String?
+  points Int        @default(0)
+  status UserStatus @default(active)
+
+  referralCode String?
+
+  role UserRole @default(customer)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+  handledOrders Order[] @relation("OperatorOrders")
+}
+
+model Order {
+  id         Int         @id @default(autoincrement())
+  userId     Int
+  totalPrice Int
+  status     OrderStatus @default(pending)
+  notes      String?
+
+  operatorId  Int?
+  handledAt   DateTime?
+  dueAt       DateTime?
+  completedAt DateTime?
+  operator    User?           @relation("OperatorOrders", fields: [operatorId], references: [id])
+  stageLogs   OrderStageLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User        @relation(fields: [userId], references: [id])
+  items OrderItem[]
+
+  paymentStatus  PaymentStatus @default(unpaid)
+  confirmedAt    DateTime?
+}
+
+model OrderItem {
+  id Int @id @default(autoincrement())
+
+  orderId   Int
+  productId Int
+
+  quantity Int
+  price    Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model OrderStageLog {
+  id      Int             @id @default(autoincrement())
+  orderId Int
+  stage   ProductionStage
+  startAt DateTime        @default(now())
+  endAt   DateTime?
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Voucher {
+  id        Int          @id @default(autoincrement())
+  code      String       @unique
+  type      DiscountType
+  discount  Int          // persen (1-100) atau nominal (Rp)
+  maxUse    Int
+  usedCount Int          @default(0)
+  expiresAt DateTime
+  active    Boolean      @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FlashSale {
+  id        Int             @id @default(autoincrement())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  status    FlashSaleStatus @default(upcoming)
+  active    Boolean         @default(true)
+
+  products FlashSaleProduct[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FlashSaleProduct {
+  id          Int @id @default(autoincrement())
+  flashSaleId Int
+  productId   Int
+
+  flashSale FlashSale @relation(fields: [flashSaleId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+}
+
+
 model Product {
-  id          Int      @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   name        String
   description String
   price       Int
   image       String?
   images      Json?
   category    String
-  featured    Boolean @default(false)
-  active      Boolean @default(true)
+
+  featured Boolean @default(false)
+  active   Boolean @default(true)
 
   specifications Json?
 
@@ -36,6 +186,9 @@ model Product {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+  flashSaleProducts FlashSaleProduct[]
 }
 
 model ProductConfig {
@@ -66,7 +219,7 @@ model ConfigTemplateItem {
   id Int @id @default(autoincrement())
 
   templateId Int
-  type       String // material | finishing | size | design
+  type       String
   name       String
   extraPrice Int    @default(0)
 
@@ -77,21 +230,25 @@ model ConfigTemplateItem {
 }
 
 model Category {
-  id        Int      @id @default(autoincrement())
-  name      String
-  slug      String   @unique
-  icon      String
-  active    Boolean  @default(true)
+  id   Int    @id @default(autoincrement())
+  name String
+  slug String @unique
+  icon String
+
+  active Boolean @default(true)
+
   createdAt DateTime @default(now())
 }
 
 model Material {
-  id        Int      @id @default(autoincrement())
+  id        Int    @id @default(autoincrement())
   name      String
   unit      String
-  stock     Int      @default(0)
+  stock     Int    @default(0)
   threshold Int
-  active    Boolean  @default(true)
+
+  active Boolean @default(true)
+
   createdAt DateTime @default(now())
 }
 
@@ -103,7 +260,6 @@ model Device {
   type   DeviceType
   status DeviceStatus
 
-  // ===== MACHINE =====
   dimension  String?
   weight     String?
   power      String?
@@ -119,7 +275,6 @@ model Device {
   digitalPanel Boolean?
   safetySensor Boolean?
 
-  // ===== DRONE =====
   foldedDimension String?
   flightTime      String?
   cameraSensor    String?
@@ -137,33 +292,19 @@ model Device {
 }
 
 model Service {
-  id          Int     @id @default(autoincrement())
+  id          Int    @id @default(autoincrement())
   title       String
   description String
   features    Json
   duration    String
   price       Int
-  image       String?
-  category    String
-  featured    Boolean @default(false)
-  active      Boolean @default(true)
+
+  image    String?
+  category String
+
+  featured Boolean @default(false)
+  active   Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-enum DeviceType {
-  machine
-  drone
-}
-
-enum DeviceStatus {
-  active
-  maintenance
-  inactive
-}
-
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
 }

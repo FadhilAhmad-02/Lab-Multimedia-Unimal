@@ -10,96 +10,52 @@ import deviceRoutes from "./routes/device.routes";
 import serviceRoutes from "./routes/service.routes";
 import productConfigRoutes from "./routes/productConfig.routes";
 import templateRoutes from "./routes/template.routes";
+import userRoutes from "./routes/user.routes";
+import orderRoutes from "./routes/order.routes";
+import adminRoutes from "./routes/admin.routes";
+import laporanRouter from "./routes/laporan.routes";
+import dashboardRoutes from "./routes/dashboard.routes";
+import promoRoutes from "./routes/promo.routes";
 
 const app = express();
 
-/*
-=================================
-MIDDLEWARE
-=================================
-*/
-app.use(
-  cors({
-    origin:
-      "http://localhost:5173",
-    credentials: true,
-  })
-);
+// ── CORS ──────────────────────────────────────
+app.use(cors({ origin: "*" }));
 
+// ── BODY PARSER ───────────────────────────────
 app.use(express.json());
 
-/*
-=================================
-ROOT TEST
-=================================
-*/
+// ── REQUEST LOGGER (dev) ──────────────────────
+app.use((req, _res, next) => {
+  console.log(`[${req.method}] ${req.url}`);
+  next();
+});
+
+// ── STATIC ────────────────────────────────────
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+// ── ROOT ──────────────────────────────────────
 app.get("/", (_req, res) => {
-  res.send(
-    "Backend Lab Multimedia berjalan 🚀"
-  );
+  res.send("Backend Lab Multimedia berjalan 🚀");
 });
 
-/*
-=================================
-API ROUTES
-=================================
-*/
-app.use(
-  "/api/auth",
-  authRoutes
-);
-
-app.use(
-  "/api/products",
-  productRoutes
-);
-
-app.use(
-  "/api/categories",
-  categoryRoutes
-);
-
-/* Materials */
-app.use(
-  "/api/materials",
-  materialRoutes
-);
-
-/*
-=================================
-SERVER
-=================================
-*/
-app.listen(3001, () => {
-  console.log(
-    "Server running on http://localhost:3001"
-  );
-});
-
-/* Devices */
-app.use(
-  "/api/devices",
-  deviceRoutes
-);
-
-/* Service */
-app.use(
-  "/api/services",
-  serviceRoutes
-);
-
-/* Konfigurasi Produk */
-app.use(
-  "/api/product-config",
-  productConfigRoutes
-);
-
-/*Template*/ 
+// ── ROUTES ────────────────────────────────────
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/materials", materialRoutes);
+app.use("/api/devices", deviceRoutes);
+app.use("/api/services", serviceRoutes);
+app.use("/api/laporan", laporanRouter);
+app.use("/api/promo", promoRoutes);
+app.use("/api/product-config", productConfigRoutes);
 app.use("/api/templates", templateRoutes);
 
-app.use(
-  "/uploads",
-  express.static(
-    path.join(process.cwd(), "uploads")
-  )
-);
+// ── START ─────────────────────────────────────
+app.listen(3001, () => {
+  console.log("Server running on http://localhost:3001");
+});
