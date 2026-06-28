@@ -27,7 +27,7 @@ const FOOTER_COLS = [
 
 export function AppFooter() {
   const socials = [
-    { Icon: Instagram,     href: "https://instagram.com/", label: "Instagram" },
+    { Icon: Instagram,     href: "https://www.instagram.com/malikussaleh.advertising", label: "Instagram" },
     { Icon: Facebook,      href: "#",                      label: "Facebook" },
     { Icon: Youtube,       href: "#",                      label: "YouTube" },
     { Icon: MessageCircle, href: "https://wa.me/081234567890", label: "WhatsApp" },

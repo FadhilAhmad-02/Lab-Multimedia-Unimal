@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Search, Filter, Download, Eye, UserCheck, X, Ban,
   ChevronLeft, ChevronRight, Calendar, ChevronDown,
-  FileSpreadsheet, FileText, CheckCircle2,
+  FileSpreadsheet, FileText, CheckCircle2, Clock, CreditCard,
 } from "lucide-react";
 import { v } from "../../components/pageUtils";
 import { useAuth } from "../../hooks/useAuth";
@@ -11,7 +11,7 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
 
 // ── TYPES ────────────────────────────────────────────────────────
 type OrderItem = {
@@ -22,16 +22,29 @@ type OrderItem = {
   product: { id: number; name: string };
 };
 
+type StageLog = {
+  id: number;
+  stage: string;
+  startAt: string;
+  endAt: string | null;
+};
+
 type Order = {
   id: number;
   userId: number;
   totalPrice: number;
   status: "pending" | "processing" | "completed" | "cancelled";
+  paymentStatus: "unpaid" | "paid" | "rejected" | null;
   notes: string | null;
+  dueAt: string | null;
+  handledAt: string | null;
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
   user: { id: number; fullName: string; email: string };
+  operator: { id: number; fullName: string } | null;
   items: OrderItem[];
+  stageLogs: StageLog[];
 };
 
 // ── HELPERS ──────────────────────────────────────────────────────
@@ -52,6 +65,27 @@ const STATUS_COLOR: Record<string, string> = {
 const STATUS_LIST = ["Semua", "Menunggu Bayar", "Diproses", "Selesai", "Dibatalkan"];
 const PER_PAGE    = 8;
 
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  unpaid:   "Belum Bayar",
+  paid:     "Sudah Bayar",
+  rejected: "Pembayaran Ditolak",
+};
+
+const PAYMENT_STATUS_COLOR: Record<string, string> = {
+  unpaid:   "#EAB308",
+  paid:     "#10B981",
+  rejected: "#EF4444",
+};
+
+const STAGE_LABEL: Record<string, string> = {
+  verifikasi_file: "Verifikasi File",
+  pracetak:        "Pracetak",
+  sedang_dicetak:  "Sedang Dicetak",
+  finishing:       "Finishing",
+  qc:              "QC & Packing",
+  siap_kirim:      "Siap Dikirim",
+};
+
 const formatRupiah = (n: number) =>
   new Intl.NumberFormat("id-ID", {
     style: "currency", currency: "IDR", maximumFractionDigits: 0,
@@ -60,6 +94,11 @@ const formatRupiah = (n: number) =>
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("id-ID", {
     day: "2-digit", month: "short", year: "numeric",
+  });
+
+const formatDatetime = (iso: string) =>
+  new Date(iso).toLocaleString("id-ID", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
 
 // ── COMPONENT ────────────────────────────────────────────────────
@@ -82,7 +121,7 @@ export function AdminPesanan() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const res  = await fetch(`${API}/api/orders`, { headers: authHeader });
+      const res  = await fetch(`${API}/orders`, { headers: authHeader });
       if (!res.ok) throw new Error("Unauthorized");
       const data = await res.json();
       setOrders(data);
@@ -108,14 +147,17 @@ export function AdminPesanan() {
   // ── EXPORT HELPERS ───────────────────────────────────────────
   const exportRows = () =>
     filtered.map(o => ({
-      "No. Pesanan":  `ORD-${String(o.id).padStart(4, "0")}`,
-      "Customer":     o.user.fullName,
-      "Email":        o.user.email,
-      "Produk":       o.items.map(i => `${i.product.name} ×${i.quantity}`).join("; ") || "-",
-      "Total":        o.totalPrice,
-      "Status":       STATUS_MAP[o.status] ?? o.status,
-      "Catatan":      o.notes || "-",
-      "Tanggal":      formatDate(o.createdAt),
+      "No. Pesanan":     `ORD-${String(o.id).padStart(4, "0")}`,
+      "Customer":        o.user.fullName,
+      "Email":           o.user.email,
+      "Produk":          o.items.map(i => `${i.product.name} ×${i.quantity}`).join("; ") || "-",
+      "Total":           o.totalPrice,
+      "Status":          STATUS_MAP[o.status] ?? o.status,
+      "Status Bayar":    o.paymentStatus ? (PAYMENT_STATUS_LABEL[o.paymentStatus] ?? o.paymentStatus) : "-",
+      "Operator":        o.operator?.fullName ?? "-",
+      "Deadline":        o.dueAt ? formatDate(o.dueAt) : "-",
+      "Catatan":         o.notes || "-",
+      "Tanggal":         formatDate(o.createdAt),
     }));
 
   const exportExcel = () => {
@@ -163,7 +205,7 @@ export function AdminPesanan() {
   const updateStatus = async (orderId: number, status: string) => {
     try {
       setUpdatingId(orderId);
-      const res = await fetch(`${API}/api/orders/${orderId}/status`, {
+      const res = await fetch(`${API}/orders/${orderId}/status`, {
         method:  "PATCH",
         headers: authHeader,
         body:    JSON.stringify({ status }),
@@ -484,19 +526,41 @@ export function AdminPesanan() {
 
                 {/* Drawer Body */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-5">
-                  {[
+                  {/* Info rows */}
+                  {([
                     { label: "Customer", value: selectedOrder.user.fullName },
                     { label: "Email",    value: selectedOrder.user.email },
                     { label: "Total",    value: formatRupiah(selectedOrder.totalPrice) },
                     { label: "Catatan", value: selectedOrder.notes || "-" },
                     { label: "Tanggal", value: formatDate(selectedOrder.createdAt) },
-                  ].map(({ label, value }) => (
+                    { label: "Deadline", value: selectedOrder.dueAt ? formatDatetime(selectedOrder.dueAt) : "-" },
+                    { label: "Operator", value: selectedOrder.operator?.fullName ?? "Belum ditugaskan" },
+                    { label: "Mulai Dikerjakan", value: selectedOrder.handledAt ? formatDatetime(selectedOrder.handledAt) : "-" },
+                    { label: "Selesai",  value: selectedOrder.completedAt ? formatDatetime(selectedOrder.completedAt) : "-" },
+                  ] as const).map(({ label, value }) => (
                     <div key={label} className="flex justify-between py-3"
                       style={{ borderBottom: `1px solid ${v("--c-border")}` }}>
                       <span className="text-sm" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{label}</span>
                       <span className="text-sm font-medium" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{value}</span>
                     </div>
                   ))}
+
+                  {/* Payment Status Badge */}
+                  {selectedOrder.paymentStatus && (
+                    <div className="flex items-center justify-between py-3" style={{ borderBottom: `1px solid ${v("--c-border")}` }}>
+                      <span className="text-sm flex items-center gap-1.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                        <CreditCard size={13} /> Status Pembayaran
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                        style={{
+                          background: (PAYMENT_STATUS_COLOR[selectedOrder.paymentStatus] ?? "#888") + "20",
+                          color: PAYMENT_STATUS_COLOR[selectedOrder.paymentStatus] ?? "#888",
+                          fontFamily: "'Inter',sans-serif",
+                        }}>
+                        {PAYMENT_STATUS_LABEL[selectedOrder.paymentStatus] ?? selectedOrder.paymentStatus}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Item List */}
                   <div className="p-4 rounded-xl" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}` }}>
@@ -516,6 +580,28 @@ export function AdminPesanan() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Stage Logs */}
+                  {selectedOrder.stageLogs && selectedOrder.stageLogs.length > 0 && (
+                    <div className="p-4 rounded-xl" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}` }}>
+                      <p className="text-xs font-semibold mb-3 uppercase tracking-widest" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Riwayat Produksi</p>
+                      <div className="flex flex-col gap-2">
+                        {selectedOrder.stageLogs.map(log => (
+                          <div key={log.id} className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <Clock size={11} style={{ color: v("--c-text-sec"), flexShrink: 0, marginTop: 1 }} />
+                              <span className="text-xs font-medium" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>
+                                {STAGE_LABEL[log.stage] ?? log.stage}
+                              </span>
+                            </div>
+                            <span className="text-xs whitespace-nowrap" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                              {formatDatetime(log.startAt)}{log.endAt ? ` → ${formatDatetime(log.endAt)}` : " (berlangsung)"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Update Status */}
                   <div className="p-4 rounded-xl" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}` }}>
@@ -542,9 +628,14 @@ export function AdminPesanan() {
                 {/* Drawer Footer */}
                 <div className="p-5 space-y-2" style={{ borderTop: `1px solid ${v("--c-border")}` }}>
                   {/* Status hint */}
-                  {selectedOrder.status === "pending" && (
+                  {selectedOrder.status === "pending" && selectedOrder.paymentStatus !== "paid" && (
+                    <p className="text-xs text-center pb-1" style={{ color: "#EAB308", fontFamily: "'Inter',sans-serif" }}>
+                      ⚠ Pesanan belum dapat diproses — pembayaran belum dikonfirmasi
+                    </p>
+                  )}
+                  {selectedOrder.status === "pending" && selectedOrder.paymentStatus === "paid" && (
                     <p className="text-xs text-center pb-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
-                      Proses pesanan terlebih dahulu sebelum menyelesaikannya
+                      Pembayaran terkonfirmasi — pesanan siap diproses
                     </p>
                   )}
                   {selectedOrder.status === "completed" && (
@@ -563,9 +654,16 @@ export function AdminPesanan() {
                       onClick={() => updateStatus(selectedOrder.id, "processing")}
                       disabled={
                         selectedOrder.status !== "pending" ||
+                        selectedOrder.paymentStatus !== "paid" ||
                         updatingId === selectedOrder.id
                       }
-                      title={selectedOrder.status !== "pending" ? "Hanya pesanan Menunggu Bayar yang bisa diproses" : undefined}
+                      title={
+                        selectedOrder.status !== "pending"
+                          ? "Hanya pesanan Menunggu Bayar yang bisa diproses"
+                          : selectedOrder.paymentStatus !== "paid"
+                          ? "Pembayaran belum dikonfirmasi"
+                          : undefined
+                      }
                       className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-all"
                       style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>
                       {updatingId === selectedOrder.id && selectedOrder.status === "pending"

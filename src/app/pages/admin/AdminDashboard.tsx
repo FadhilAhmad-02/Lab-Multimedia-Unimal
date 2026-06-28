@@ -15,7 +15,7 @@ import { useAuth } from "../../hooks/useAuth";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
+const API = (import.meta.env.VITE_API_URL ?? "http://localhost:3001/api").replace(/\/api$/, "");
 
 /* ── Types (cocok dengan response GET /api/dashboard) ─────────── */
 type DashboardData = {
@@ -139,7 +139,7 @@ export function AdminDashboard() {
   const fetchDashboard = useCallback(async () => {
     try {
       setError("");
-      const res = await fetch(`${API}/api/dashboard`, { headers: authHeader });
+      const res = await fetch(`${API}/api/dashboard`, { headers: authHeader as HeadersInit });
       if (!res.ok) throw new Error("Gagal mengambil data dashboard");
       const json: DashboardData = await res.json();
       setData(json);

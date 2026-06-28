@@ -62,6 +62,15 @@ enum DiscountType {
   nominal
 }
 
+enum NotificationCategory {
+  pesanan    // order events (new, cancelled, completed, dll)
+  keuangan   // payment events
+  sistem     // system events (stok menipis, backup, dll)
+  pengguna   // user events (new user, dll)
+  broadcast  // admin → semua customer / customer tertentu
+}
+
+
 model User {
   id          Int    @id @default(autoincrement())
   fullName    String
@@ -82,6 +91,8 @@ model User {
 
   orders Order[]
   handledOrders Order[] @relation("OperatorOrders")
+
+  notifications Notification[]
 }
 
 model Order {
@@ -106,6 +117,8 @@ model Order {
 
   paymentStatus  PaymentStatus @default(unpaid)
   confirmedAt    DateTime?
+
+  notifications Notification[]
 }
 
 model OrderItem {
@@ -307,4 +320,59 @@ model Service {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StaticPage {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  title     String
+  content   String   @db.LongText
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DesignTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  category  String
+  image     String   @db.Text
+  link      String   @db.Text
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BackupLog {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id          Int                  @id @default(autoincrement())
+  title       String
+  description String               @db.Text
+  category    NotificationCategory
+  read        Boolean              @default(false)
+
+  // Null  → notifikasi admin/sistem (bukan milik user tertentu)
+  // Not null → notifikasi milik customer tertentu
+  userId      Int?
+  user        User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Optional link ke pesanan supaya customer bisa klik "Lihat Pesanan"
+  orderId     Int?
+  order       Order?               @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 }

@@ -2,8 +2,8 @@ import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Upload, X, ZoomIn, ChevronLeft, ChevronRight,
-  Image as ImageIcon, Trash2, ChevronRight as BreadcrumbArrow, Lock,
-  Camera, Search, ShoppingBag,
+  Image as ImageIcon, Trash2, ChevronRight as BreadcrumbArrow,
+  Search, ShoppingBag,
 } from "lucide-react";
 import { v, CTASection } from "../components/pageUtils";
 
@@ -247,6 +247,7 @@ export function PortfolioPage() {
   const { isStaff } = useRole();
 
   const handleFiles = useCallback((files: FileList) => {
+    if (!isStaff) return;
     const newImages: GalleryImage[] = [];
     Array.from(files).forEach((file) => {
       if (!file.type.startsWith("image/")) return;
@@ -259,9 +260,10 @@ export function PortfolioPage() {
       });
     });
     setImages((prev) => [...newImages, ...prev]);
-  }, []);
+  }, [isStaff]);
 
   const deleteImage = (id: string) => {
+    if (!isStaff) return;
     setImages((prev) => prev.filter((img) => img.id !== id));
     if (lightboxIdx !== null) setLightboxIdx(null);
   };
@@ -393,64 +395,47 @@ export function PortfolioPage() {
       >
         <div className="max-w-7xl mx-auto px-5 md:px-10">
           {/* Upload area — operator / admin only */}
-          {isStaff ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-12 rounded-3xl p-6 md:p-8"
-            style={{
-              background: v("--c-card"),
-              border: `1px solid ${v("--c-border")}`,
-              boxShadow: v("--c-shadow-card"),
-            }}
-          >
-            <div className="flex items-center gap-3 mb-5">
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{ background: v("--c-gradient-r") }}
-              >
-                <ImageIcon size={16} className="text-white" />
-              </div>
-              <div>
-                <p
-                  className="font-semibold text-sm"
-                  style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}
+          {isStaff && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-12 rounded-3xl p-6 md:p-8"
+              style={{
+                background: v("--c-card"),
+                border: `1px solid ${v("--c-border")}`,
+                boxShadow: v("--c-shadow-card"),
+              }}
+            >
+              <div className="flex items-center gap-3 mb-5">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: v("--c-gradient-r") }}
                 >
-                  Upload Karya Portfolio
-                </p>
-                <p
-                  className="text-xs"
-                  style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}
-                >
-                  Area khusus operator — tambahkan gambar hasil karya terbaru
-                </p>
+                  <ImageIcon size={16} className="text-white" />
+                </div>
+                <div>
+                  <p
+                    className="font-semibold text-sm"
+                    style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}
+                  >
+                    Upload Karya Portfolio
+                  </p>
+                  <p
+                    className="text-xs"
+                    style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}
+                  >
+                    Area khusus operator — tambahkan gambar hasil karya terbaru
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <UploadZone
-              onFiles={handleFiles}
-              isDragging={isDragging}
-              onDragEnter={() => setIsDragging(true)}
-              onDragLeave={() => setIsDragging(false)}
-            />
-          </motion.div>
-          ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-12 rounded-2xl px-6 py-4 flex items-center gap-3"
-            style={{
-              background: "rgba(46,125,50,0.07)",
-              border: "1.5px solid rgba(46,125,50,0.18)",
-            }}
-          >
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(46,125,50,0.12)" }}>
-              <Lock size={14} style={{ color: v("--c-primary") }} />
-            </div>
-            <p className="text-sm" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
-              Upload gambar hanya tersedia untuk <span style={{ color: v("--c-primary"), fontWeight: 600 }}>Operator</span> dan <span style={{ color: v("--c-primary"), fontWeight: 600 }}>Admin</span>. Anda dapat menikmati galeri karya terbaik kami di bawah.
-            </p>
-          </motion.div>
+              <UploadZone
+                onFiles={handleFiles}
+                isDragging={isDragging}
+                onDragEnter={() => setIsDragging(true)}
+                onDragLeave={() => setIsDragging(false)}
+              />
+            </motion.div>
           )}
 
           {/* Gallery header */}
@@ -506,7 +491,7 @@ export function PortfolioPage() {
                 className="text-sm"
                 style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}
               >
-                Upload gambar portfolio pertama Anda di atas
+                {isStaff ? "Upload gambar portfolio pertama Anda di atas" : "Galeri portfolio saat ini kosong"}
               </p>
             </motion.div>
           ) : (
@@ -601,15 +586,11 @@ export function PortfolioPage() {
             viewport={{ once: true }}
             className="mt-16 grid md:grid-cols-3 gap-5"
           >
-            {(isStaff ? [
-              { Icon: Camera,     title: "Upload Mudah",   desc: "Drag & drop atau klik tombol upload untuk menambahkan gambar portfolio baru." },
-              { Icon: Search,     title: "Lihat Detail",   desc: "Klik gambar manapun untuk melihat tampilan penuh dengan navigasi antar foto." },
-              { Icon: Trash2,     title: "Kelola Galeri",  desc: "Arahkan kursor ke gambar dan klik ikon hapus merah untuk menghapus foto." },
-            ] : [
+            {[
               { Icon: ImageIcon,  title: "Galeri Karya",   desc: "Temukan inspirasi dari berbagai karya cetak premium yang telah kami selesaikan." },
               { Icon: Search,     title: "Lihat Detail",   desc: "Klik gambar manapun untuk melihat tampilan penuh dengan navigasi antar foto." },
               { Icon: ShoppingBag,title: "Pesan Sekarang", desc: "Tertarik? Langsung pesan produk serupa melalui halaman katalog kami." },
-            ] as const).map(({ Icon: TipIcon, title, desc }) => (
+            ].map(({ Icon: TipIcon, title, desc }) => (
               <div
                 key={title}
                 className="rounded-xl p-5 text-center"

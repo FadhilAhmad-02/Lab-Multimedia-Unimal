@@ -1,7 +1,7 @@
 export function useAuth() {
     const token = localStorage.getItem("ma_token") ?? "";
 
-    const authHeader: HeadersInit = token
+    const authHeader: Record<string, string> = token
         ? {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",

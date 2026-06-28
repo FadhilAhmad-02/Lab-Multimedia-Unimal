@@ -141,3 +141,4 @@ export const router = createBrowserRouter([
   /* ─── 404 ──────────────────────────────────────────────────── */
   { path: "*", Component: NotFound },
 ]);
+

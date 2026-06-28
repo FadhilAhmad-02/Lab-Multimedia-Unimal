@@ -8,9 +8,10 @@ import {
   Pencil, Ruler, Image as ImageIcon, FileText as FileIcon,
 } from "lucide-react";
 import { v } from "../../components/pageUtils";
+import { getCart, getAppliedVoucher, clearCart, type CartItem } from "./KeranjangPage";
 
 /* ══════════════════════════════════════════════════════════════
-   STATIC DATA
+  STATIC DATA
 ══════════════════════════════════════════════════════════════ */
 
 const PROD_CATEGORIES = [
@@ -110,7 +111,7 @@ const PAYMENT_METHODS = [
   { id: "tf_mandiri", group: "manual", label: "Transfer Mandiri",      Icon: Landmark,   desc: "Nomor Rek: 1380-555-666-777",         color: "var(--c-primary)" },
 ];
 
-const CHECKOUT_STEPS = ["Spesifikasi", "Pengiriman", "Pembayaran", "Proses Bayar"];
+
 const STEP_ICONS     = [Package, Truck, CreditCard, Smartphone];
 
 /* ══════════════════════════════════════════════════════════════
@@ -714,314 +715,474 @@ function StepPengiriman({
 }
 
 /* ══════════════════════════════════════════════════════════════
-   STEP 2 — METODE PEMBAYARAN
+   SIMPLIFIKASI PAYMENT_METHODS & StepPilihPembayaran
+
+   Karena pembayaran hanya transfer manual → konfirmasi via WA,
+   Step 2 "Pilih Pembayaran" tidak relevan lagi.
+
+   Ada 2 pilihan:
+   A) Hapus step "Pembayaran" sepenuhnya → checkout jadi 3 step
+   B) Pertahankan step tapi isinya cukup info singkat (lebih mudah)
+
+   Di bawah ini adalah opsi B — ganti StepPilihPembayaran dengan
+   halaman info singkat, dan checkout tetap 4 step.
 ══════════════════════════════════════════════════════════════ */
 
-function StepPilihPembayaran({
-  onNext, onBack, orderData, setOrderData,
-}: {
-  onNext: () => void; onBack: () => void;
-  orderData: OrderData; setOrderData: (d: Partial<OrderData>) => void;
-}) {
-  const autoMethods   = PAYMENT_METHODS.filter(p => p.group === "auto");
-  const manualMethods = PAYMENT_METHODS.filter(p => p.group === "manual");
+// ── Ganti konstanta CHECKOUT_STEPS (opsional, agar lebih akurat) ──
+const CHECKOUT_STEPS = ["Spesifikasi", "Pengiriman", "Konfirmasi", "Selesai"];
+// STEP_ICONS tetap sama: [Package, Truck, CreditCard, Smartphone]
 
+// ── Ganti fungsi StepPilihPembayaran ──
+// Letakkan menggantikan fungsi StepPilihPembayaran yang lama (baris 720-789)
+
+function StepPilihPembayaran({
+  onNext, onBack,
+}: {
+  onNext: () => void;
+  onBack: () => void;
+  // orderData & setOrderData tidak dipakai lagi tapi biarkan di signature
+  // agar tidak perlu ubah pemanggilan di JSX
+  orderData: OrderData;
+  setOrderData: (d: Partial<OrderData>) => void;
+}) {
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-6">
       <div>
-        <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Bayar Otomatis (Instan)</p>
-        <div className="flex flex-col gap-2">
-          {autoMethods.map(pm => {
-            const active = orderData.paymentId === pm.id;
-            return (
-              <label key={pm.id} className="flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-200"
-                style={{ border: `${active ? "2px" : "1px"} solid ${active ? pm.color : v("--c-border")}`, background: active ? `${pm.color}12` : v("--c-card") }}>
-                <input type="radio" name="payment" checked={active} onChange={() => setOrderData({ paymentId: pm.id })} style={{ accentColor: pm.color }} />
-                <pm.Icon size={22} style={{ color: pm.color, flexShrink: 0 }} aria-hidden="true" />
-                <div className="flex-1">
-                  <p className="font-semibold text-sm" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{pm.label}</p>
-                  <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{pm.desc}</p>
-                </div>
-                {active && <Check size={16} style={{ color: pm.color }} />}
-              </label>
-            );
-          })}
-        </div>
+        <h3
+          className="font-['Poppins',sans-serif] font-bold mb-2"
+          style={{ color: v("--c-text") }}
+        >
+          Metode Pembayaran
+        </h3>
+        <p className="text-sm" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+          Pembayaran dilakukan via <strong style={{ color: v("--c-text") }}>transfer bank</strong> dan konfirmasi melalui WhatsApp.
+        </p>
       </div>
 
-      <div>
-        <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Transfer Manual</p>
-        <div className="flex flex-col gap-2">
-          {manualMethods.map(pm => {
-            const active = orderData.paymentId === pm.id;
-            return (
-              <label key={pm.id} className="flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-200"
-                style={{ border: `${active ? "2px" : "1px"} solid ${active ? pm.color : v("--c-border")}`, background: active ? `${pm.color}12` : v("--c-card") }}>
-                <input type="radio" name="payment" checked={active} onChange={() => setOrderData({ paymentId: pm.id })} style={{ accentColor: pm.color }} />
-                <pm.Icon size={22} style={{ color: pm.color, flexShrink: 0 }} aria-hidden="true" />
-                <div className="flex-1">
-                  <p className="font-semibold text-sm" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{pm.label}</p>
-                  <p className="text-xs font-mono" style={{ color: v("--c-text-sec") }}>{pm.desc}</p>
-                </div>
-                {active && <Check size={16} style={{ color: pm.color }} />}
-              </label>
-            );
-          })}
+      {/* Info rekening preview */}
+      <div className="flex flex-col gap-3">
+        {REKENING_TOKO.map(rek => (
+          <div
+            key={rek.bank}
+            className="flex items-center gap-4 p-4 rounded-2xl"
+            style={{ border: `1px solid ${v("--c-border")}`, background: v("--c-card") }}
+          >
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm text-white"
+              style={{ background: "var(--c-gradient-r)" }}
+            >
+              {rek.bank.charAt(0)}
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>
+                Transfer {rek.bank}
+              </p>
+              <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'JetBrains Mono', monospace" }}>
+                {rek.no}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Alur konfirmasi */}
+      <div
+        className="p-4 rounded-2xl"
+        style={{ background: "rgba(37,211,102,0.06)", border: "1px solid rgba(37,211,102,0.2)" }}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+          <p className="text-xs font-bold" style={{ color: "#25D366", fontFamily: "'Inter',sans-serif" }}>
+            Konfirmasi via WhatsApp
+          </p>
         </div>
-        <p className="text-xs mt-3 p-3 rounded-xl" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
-          Transfer manual membutuhkan konfirmasi dari tim kami (maks. 2×24 jam kerja).
+        <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif", lineHeight: 1.6 }}>
+          Setelah transfer, kirim bukti ke WA kami. Tim akan memverifikasi dan memproses pesanan Anda dalam 1×24 jam kerja.
         </p>
       </div>
 
       <div className="flex gap-3">
-        <button onClick={onBack} className="px-6 py-3 rounded-2xl font-semibold text-sm flex items-center gap-2"
-          style={{ border: `1.5px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>
+        <button
+          onClick={onBack}
+          className="px-6 py-3 rounded-2xl font-semibold text-sm flex items-center gap-2"
+          style={{ border: `1.5px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}
+        >
           <ChevronLeft size={14} /> Kembali
         </button>
-        <motion.button whileTap={{ scale: 0.97 }} onClick={onNext} disabled={orderData.paymentId === ""}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={onNext}
           className="flex-1 py-3 rounded-2xl font-bold text-white flex items-center justify-center gap-2"
-          style={{ background: orderData.paymentId !== "" ? "var(--c-gradient-r)" : v("--c-border"), fontFamily: "'Inter',sans-serif" }}>
-          Lanjut Bayar <ChevronRight size={14} />
+          style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}
+        >
+          Lanjut <ChevronRight size={14} />
         </motion.button>
       </div>
     </div>
   );
 }
 
+/*
+  CATATAN:
+  - Konstanta REKENING_TOKO dan WA_NUMBER didefinisikan di atas
+    fungsi StepProsesBayar (file StepProsesBayar_replacement.tsx).
+  - Pastikan StepPilihPembayaran ini diletakkan SETELAH konstanta
+    REKENING_TOKO dideklarasikan, atau pindahkan REKENING_TOKO ke
+    bagian STATIC DATA di atas file.
+*/
+
 /* ══════════════════════════════════════════════════════════════
-   STEP 3 — PROSES BAYAR
+   STEP 3 — PROSES BAYAR  (alur manual WA)
+
+   INSTRUKSI: Ganti seluruh fungsi StepProsesBayar yang lama
+   (baris 795–1013 di file asli) dengan fungsi ini.
+
+   Juga hapus PAYMENT_METHODS, CHECKOUT_STEPS step "Proses Bayar"
+   tidak perlu diubah — hanya fungsi ini yang diganti.
 ══════════════════════════════════════════════════════════════ */
 
+// Nomor WhatsApp toko — ganti sesuai nomor asli (format internasional tanpa +)
+const WA_NUMBER = "6281234567890";
+
+// Info rekening toko — sesuaikan dengan data nyata
+const REKENING_TOKO = [
+  { bank: "BCA",     no: "8230-111-222-333", atas: "Malikussaleh Advertising" },
+  { bank: "Mandiri", no: "1380-555-666-777", atas: "Malikussaleh Advertising" },
+  { bank: "BNI",     no: "0123-456-789",     atas: "Malikussaleh Advertising" },
+];
+
 function StepProsesBayar({
-  onSuccess, onBack, orderData, total,
+  onSuccess,
+  onBack,
+  orderData,
+  total,
+  cartItems,
+  voucherCode,
+  onCreated,
 }: {
-  onSuccess: () => void; onBack: () => void;
-  orderData: OrderData; total: number;
+  onSuccess: () => void;
+  onBack: () => void;
+  orderData: OrderData;
+  total: number;
+  cartItems: CartItem[];
+  voucherCode: string;
+  onCreated: (id: number) => void;
 }) {
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [dragOver,   setDragOver]   = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError,   setApiError]   = useState<string | null>(null);
+  const [orderId,    setOrderId]    = useState<number | null>(null);
 
-  const handleConfirm = async () => {
-    setConfirming(true);
-    await new Promise(r => setTimeout(r, 1800));
-    onSuccess();
+  // ── Step internal: "form" → "success_create" ──
+  // Setelah order dibuat, tampilkan info rekening + tombol WA
+  const [orderCreated, setOrderCreated] = useState(false);
+
+  const token = () =>
+    localStorage.getItem("token") ?? sessionStorage.getItem("token") ?? "";
+
+  // ── 1. Buat order di backend ──
+  const handleBuatPesanan = async () => {
+    setSubmitting(true);
+    setApiError(null);
+
+    try {
+      const items = cartItems.length > 0
+        ? cartItems.map(i => ({
+            productId: i.productId,
+            quantity:  i.qty,
+            price:     i.price,
+          }))
+        : [{
+            productId: parseInt(orderData.productId) || 0,
+            quantity:  orderData.qty,
+            price:     Math.round(total / orderData.qty),
+          }];
+
+      const notes = [
+        orderData.notes,
+        voucherCode ? `[VOUCHER:${voucherCode}]` : "",
+      ].filter(Boolean).join(" | ");
+
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token()}`,
+        },
+        body: JSON.stringify({
+          items,
+          notes:      notes || undefined,
+          totalPrice: total,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).message ?? `Gagal membuat pesanan (${res.status})`);
+      }
+
+      const json = await res.json();
+      const id: number =
+        (json as any).id ??
+        (json as any).data?.id ??
+        (json as any).order?.id;
+
+      if (!id) throw new Error("Respons server tidak mengandung ID pesanan.");
+
+      setOrderId(id);
+      onCreated(id);
+      clearCart();
+      setOrderCreated(true);
+
+    } catch (err: any) {
+      setApiError((err as Error).message ?? "Terjadi kesalahan. Coba lagi.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) setUploadFile(file);
-  };
+  // ── 2. Buka WhatsApp dengan pesan otomatis ──
+  const handleKirimWA = () => {
+    const orderLabel = orderId
+      ? `ORD-${String(orderId).padStart(8, "0")}`
+      : "—";
 
-  const ConfirmBtn = ({ disabled = false, label = "Saya Sudah Bayar", color = "var(--c-gradient-r)" }) => (
-    <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirm} disabled={disabled || confirming}
-      className="w-full py-4 rounded-2xl font-bold text-white flex items-center justify-center gap-2"
-      style={{ background: disabled ? v("--c-border") : color, fontFamily: "'Inter',sans-serif", cursor: disabled ? "not-allowed" : "pointer" }}>
-      {confirming
-        ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Memverifikasi...</>
-        : <><Check size={15} /> {label}</>}
-    </motion.button>
-  );
-
-  const BackBtn = () => (
-    <button onClick={onBack} className="w-full text-sm text-center" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
-      ← Ganti metode pembayaran
-    </button>
-  );
-
-  const OrderBadge = () => (
-    <div className="text-center mb-2">
-      <span className="px-3 py-1.5 rounded-full text-sm font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10B981", fontFamily: "'Inter',sans-serif" }}>
-        Pesanan dibuat — #ORD-2025-0049
-      </span>
-    </div>
-  );
-
-  /* QRIS */
-  if (orderData.paymentId === "qris") return (
-    <div className="flex flex-col items-center gap-6">
-      <OrderBadge />
-      <div className="text-center">
-        <h3 className="font-['Poppins',sans-serif] font-bold mb-1" style={{ color: v("--c-text"), fontSize: "1.3rem" }}>Scan QR Code untuk Membayar</h3>
-        <p className="text-sm" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Gunakan app apapun (GoPay, OVO, DANA, dll.)</p>
-      </div>
-      <div className="p-6 rounded-3xl flex flex-col items-center gap-4" style={{ background: v("--c-card"), border: "2px solid rgba(46,125,50,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.12)" }}>
-        <QRCode size={200} />
-        <div className="text-center">
-          <p className="text-xs mb-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Total Pembayaran</p>
-          <p className="font-['Poppins',sans-serif] font-bold text-3xl" style={{ color: v("--c-primary") }}>{fmt(total)}</p>
-        </div>
-        <div className="w-full p-3 rounded-xl flex items-center justify-between" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}` }}>
-          <div className="flex items-center gap-2"><AlertCircle size={14} style={{ color: "var(--c-accent)" }} /><span className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Batas waktu:</span></div>
-          <PaymentCountdown minutes={15} />
-        </div>
-      </div>
-      {["Buka app e-wallet atau m-banking", "Pilih menu \"Scan QR\" atau \"QRIS\"", "Arahkan kamera ke QR di atas", "Masukkan nominal & konfirmasi"].map((s, i) => (
-        <div key={i} className="flex items-center gap-3 w-full">
-          <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: "var(--c-gradient-r)" }}>{i + 1}</span>
-          <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{s}</p>
-        </div>
-      ))}
-      <ConfirmBtn color="#25D366" />
-      <BackBtn />
-    </div>
-  );
-
-  /* GoPay / OVO */
-  if (orderData.paymentId === "gopay" || orderData.paymentId === "ovo") {
-    const isGopay = orderData.paymentId === "gopay";
-    const bg = isGopay ? "#00AA5B" : "#4C3494";
-    const label = isGopay ? "GoPay" : "OVO";
-    return (
-      <div className="flex flex-col items-center gap-6">
-        <OrderBadge />
-        <div className="w-full p-6 rounded-3xl flex flex-col items-center gap-5" style={{ background: v("--c-card"), border: `2px solid ${bg}30` }}>
-          <div className="w-20 h-20 rounded-full flex items-center justify-center text-4xl" style={{ background: `${bg}15`, border: `3px solid ${bg}` }}>
-            {isGopay ? "💚" : "💜"}
-          </div>
-          <div className="text-center">
-            <p className="text-sm mb-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Total Pembayaran</p>
-            <p className="font-['Poppins',sans-serif] font-bold text-3xl" style={{ color: v("--c-primary") }}>{fmt(total)}</p>
-          </div>
-          <div className="w-full flex items-center justify-between p-3 rounded-xl" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}` }}>
-            <span className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Batas waktu:</span>
-            <PaymentCountdown minutes={10} />
-          </div>
-          <ConfirmBtn label={`Bayar dengan ${label} →`} color={bg} />
-        </div>
-        <BackBtn />
-      </div>
+    const pesan = encodeURIComponent(
+      `Halo Malikussaleh Advertising, saya ingin konfirmasi pembayaran:\n\n` +
+      `📦 No. Pesanan: *${orderLabel}*\n` +
+      `💰 Total: *${fmt(total)}*\n\n` +
+      `Terlampir bukti transfer saya. Mohon segera diproses. Terima kasih!`
     );
-  }
 
-  /* Virtual Account */
-  if (orderData.paymentId === "va_bca" || orderData.paymentId === "va_bni") {
-    const isBCA  = orderData.paymentId === "va_bca";
-    const bank   = isBCA ? "BCA"  : "BNI";
-    const vaNum  = isBCA ? "8230-9999-1234-5678" : "8888-0001-2345-6789";
-    const color  = isBCA ? "#1E5FA8" : "#F77F00";
-    return (
-      <div className="flex flex-col gap-5">
-        <OrderBadge />
-        <h3 className="font-['Poppins',sans-serif] font-bold text-center" style={{ color: v("--c-text"), fontSize: "1.2rem" }}>Transfer ke Virtual Account {bank}</h3>
-        <div className="rounded-3xl p-6 flex flex-col gap-4" style={{ background: v("--c-card"), border: `2px solid ${color}30` }}>
-          <div className="p-4 rounded-2xl" style={{ background: `${color}10`, border: `1px solid ${color}30` }}>
-            <p className="text-xs mb-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Nomor VA {bank}</p>
-            <div className="flex items-center justify-between gap-3">
-              <p className="font-['JetBrains_Mono',monospace] font-bold text-xl" style={{ color }}>{vaNum}</p>
-              <CopyBtn text={vaNum.replace(/-/g, "")} />
-            </div>
-          </div>
-          <div className="p-4 rounded-2xl" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}` }}>
-            <p className="text-xs mb-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Jumlah Transfer (tepat)</p>
-            <div className="flex items-center justify-between gap-3">
-              <p className="font-['Poppins',sans-serif] font-bold text-2xl" style={{ color: v("--c-primary") }}>{fmt(total)}</p>
-              <CopyBtn text={String(total)} />
-            </div>
-            <p className="text-xs mt-1" style={{ color: "#F97316", fontFamily: "'Inter',sans-serif" }}>Transfer TEPAT sesuai nominal di atas</p>
-          </div>
-          <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}` }}>
-            <span className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Batas waktu:</span>
-            <PaymentCountdown minutes={60} />
-          </div>
-        </div>
-        {[`Buka m-banking atau ATM ${bank}`, "Pilih Transfer → Virtual Account", `Masukkan VA: ${vaNum}`, `Masukkan nominal tepat: ${fmt(total)}`, "Konfirmasi & selesaikan"].map((s, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: color }}>{i + 1}</span>
-            <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{s}</p>
-          </div>
-        ))}
-        <ConfirmBtn />
-        <BackBtn />
-      </div>
-    );
-  }
-
-  /* Transfer Manual */
-  const manualMap: Record<string, { bank: string; norek: string; color: string }> = {
-    tf_bca:     { bank: "BCA",     norek: "8230-111-222-333", color: "#1E5FA8" },
-    tf_mandiri: { bank: "Mandiri", norek: "1380-555-666-777", color: "var(--c-primary)" },
+    window.open(`https://wa.me/${WA_NUMBER}?text=${pesan}`, "_blank");
   };
-  const info = manualMap[orderData.paymentId] ?? manualMap["tf_bca"];
 
-  return (
-    <div className="flex flex-col gap-5">
-      <OrderBadge />
-      <h3 className="font-['Poppins',sans-serif] font-bold text-center" style={{ color: v("--c-text"), fontSize: "1.2rem" }}>
-        Transfer Manual ke {info.bank}
-      </h3>
-      <div className="rounded-3xl p-6 flex flex-col gap-4" style={{ background: v("--c-card"), border: `2px solid ${info.color}30` }}>
-        <div className="p-4 rounded-2xl" style={{ background: `${info.color}10`, border: `1px solid ${info.color}30` }}>
-          <p className="text-xs mb-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Nomor Rekening {info.bank}</p>
-          <div className="flex items-center justify-between">
-            <p className="font-['JetBrains_Mono',monospace] font-bold text-lg" style={{ color: info.color }}>{info.norek}</p>
-            <CopyBtn text={info.norek.replace(/-/g, "")} />
+  // ── Tampilan setelah order dibuat: info rekening + tombol WA ──
+  if (orderCreated && orderId) {
+    const orderLabel = `ORD-${String(orderId).padStart(8, "0")}`;
+
+    return (
+      <div className="flex flex-col gap-6">
+        {/* Konfirmasi order dibuat */}
+        <div
+          className="flex items-center gap-3 p-4 rounded-2xl"
+          style={{ background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.25)" }}
+        >
+          <CheckCircle size={20} color="#10B981" className="flex-shrink-0" />
+          <div>
+            <p className="font-bold text-sm" style={{ color: "#10B981", fontFamily: "'Poppins',sans-serif" }}>
+              Pesanan Berhasil Dibuat!
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+              No. Pesanan:{" "}
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: v("--c-text") }}>
+                {orderLabel}
+              </span>
+            </p>
           </div>
-          <p className="text-xs mt-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>a.n. PT Malikussaleh Advertising</p>
         </div>
-        <div className="p-4 rounded-2xl" style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}` }}>
-          <p className="text-xs mb-0.5" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Nominal Transfer</p>
-          <div className="flex items-center justify-between">
-            <p className="font-['Poppins',sans-serif] font-bold text-2xl" style={{ color: v("--c-primary") }}>{fmt(total)}</p>
+
+        {/* Instruksi */}
+        <div>
+          <p className="font-semibold text-sm mb-1" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>
+            Langkah selanjutnya:
+          </p>
+          <ol className="flex flex-col gap-2">
+            {[
+              "Transfer ke salah satu rekening di bawah",
+              `Kirim bukti transfer via WhatsApp ke nomor toko`,
+              "Tim kami akan memverifikasi dan memproses pesanan Anda",
+            ].map((s, i) => (
+              <li key={i} className="flex items-start gap-3 text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                <span
+                  className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center font-bold text-white text-xs"
+                  style={{ background: "var(--c-gradient-r)", fontSize: 10 }}
+                >
+                  {i + 1}
+                </span>
+                {s}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* Info rekening */}
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-bold tracking-widest uppercase" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+            Rekening Toko
+          </p>
+          {REKENING_TOKO.map(rek => (
+            <div
+              key={rek.bank}
+              className="flex items-center justify-between px-4 py-3 rounded-xl"
+              style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}` }}
+            >
+              <div>
+                <p className="text-xs font-bold" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>
+                  {rek.bank}
+                </p>
+                <p className="font-semibold text-sm" style={{ color: v("--c-text"), fontFamily: "'JetBrains Mono', monospace" }}>
+                  {rek.no}
+                </p>
+                <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                  a.n. {rek.atas}
+                </p>
+              </div>
+              <CopyBtn text={rek.no.replace(/-/g, "")} />
+            </div>
+          ))}
+        </div>
+
+        {/* Total yang harus ditransfer */}
+        <div
+          className="flex items-center justify-between p-4 rounded-2xl"
+          style={{ background: "rgba(46,125,50,0.06)", border: "1.5px solid rgba(46,125,50,0.2)" }}
+        >
+          <span className="font-semibold text-sm" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>
+            Nominal Transfer
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-xl" style={{ color: v("--c-primary"), fontFamily: "'Poppins',sans-serif" }}>
+              {fmt(total)}
+            </span>
             <CopyBtn text={String(total)} />
           </div>
         </div>
-      </div>
 
-      {/* Upload bukti */}
-      <div>
-        <p className="text-sm font-semibold mb-2" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>
-          Upload Bukti Transfer <span style={{ color: "#EF4444" }}>*</span>
-        </p>
-        <div
-          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className="rounded-2xl border-2 border-dashed p-6 text-center transition-all"
-          style={{ borderColor: dragOver ? v("--c-primary") : v("--c-border"), background: dragOver ? "rgba(46,125,50,0.04)" : v("--c-card") }}
+        {/* Tombol WhatsApp */}
+        <button
+          onClick={handleKirimWA}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-white transition-opacity"
+          style={{ background: "#25D366", fontFamily: "'Inter',sans-serif" }}
         >
-          {uploadFile ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(16,185,129,0.1)" }}><Check size={18} style={{ color: "#10B981" }} /></div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{uploadFile.name}</p>
-                  <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{(uploadFile.size / 1024).toFixed(1)} KB</p>
-                </div>
-              </div>
-              <button onClick={() => setUploadFile(null)} style={{ color: v("--c-text-sec") }}><X size={16} /></button>
-            </div>
-          ) : (
-            <>
-              <Upload size={24} className="mx-auto mb-2" style={{ color: v("--c-text-sec") }} />
-              <p className="text-sm font-semibold mb-1" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>Drag & drop bukti transfer</p>
-              <p className="text-xs mb-3" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>JPG, PNG, atau PDF (maks 5MB)</p>
-              <label className="px-5 py-2 rounded-xl text-sm font-semibold cursor-pointer" style={{ background: "rgba(46,125,50,0.1)", color: v("--c-primary"), fontFamily: "'Inter',sans-serif" }}>
-                Pilih File
-                <input type="file" className="hidden" accept="image/*,.pdf" onChange={e => { const f = e.target.files?.[0]; if (f) setUploadFile(f); }} />
-              </label>
-            </>
-          )}
-        </div>
+          {/* WhatsApp icon inline SVG */}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+          Kirim Bukti via WhatsApp
+        </button>
+
+        {/* Tombol selesai */}
+        <button
+          onClick={onSuccess}
+          className="w-full py-3 rounded-2xl font-semibold text-sm"
+          style={{ border: `1.5px solid ${v("--c-border")}`, color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}
+        >
+          Saya akan konfirmasi nanti →
+        </button>
+
+        <p className="text-xs text-center" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+          Anda dapat mengirim bukti pembayaran kapan saja melalui halaman{" "}
+          <Link to="/pesanan" className="font-semibold" style={{ color: v("--c-primary") }}>
+            Pesanan Saya
+          </Link>
+        </p>
+      </div>
+    );
+  }
+
+  // ── Tampilan awal: ringkasan + tombol buat pesanan ──
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="text-center">
+        <h3
+          className="font-['Poppins',sans-serif] font-bold mb-1"
+          style={{ color: v("--c-text"), fontSize: "1.3rem" }}
+        >
+          Konfirmasi Pesanan
+        </h3>
+        <p className="text-sm" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+          Pastikan semua detail sudah benar sebelum membuat pesanan.
+        </p>
       </div>
 
-      <ConfirmBtn disabled={!uploadFile} label="Kirim Bukti Transfer" />
-      <BackBtn />
+      {/* Ringkasan singkat */}
+      <div
+        className="p-4 rounded-2xl flex flex-col gap-3"
+        style={{ background: v("--c-bg-sec"), border: `1px solid ${v("--c-border")}` }}
+      >
+        <div className="flex justify-between text-sm">
+          <span style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Total Pembayaran</span>
+          <span className="font-bold text-lg" style={{ color: v("--c-primary"), fontFamily: "'Poppins',sans-serif" }}>
+            {fmt(total)}
+          </span>
+        </div>
+        <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif", lineHeight: 1.6 }}>
+          Setelah pesanan dibuat, Anda akan mendapatkan info rekening dan dapat mengirim bukti transfer via WhatsApp kepada kami.
+        </p>
+      </div>
+
+      {/* Catatan alur pembayaran */}
+      <div
+        className="flex items-start gap-3 p-3 rounded-xl"
+        style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)" }}
+      >
+        <AlertCircle size={15} color="#F59E0B" className="flex-shrink-0 mt-0.5" />
+        <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif", lineHeight: 1.6 }}>
+          Pembayaran dilakukan via transfer bank. Konfirmasi pembayaran ke WhatsApp kami setelah transfer, dan pesanan akan diproses dalam <strong style={{ color: v("--c-text") }}>1×24 jam kerja</strong>.
+        </p>
+      </div>
+
+      {/* Error */}
+      {apiError && (
+        <div
+          className="flex items-start gap-3 p-3 rounded-xl"
+          style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)" }}
+        >
+          <AlertCircle size={15} color="#EF4444" className="flex-shrink-0 mt-0.5" />
+          <p className="text-xs" style={{ color: "#EF4444", fontFamily: "'Inter',sans-serif", lineHeight: 1.6 }}>
+            {apiError}
+          </p>
+        </div>
+      )}
+
+      {/* Tombol buat pesanan */}
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        onClick={handleBuatPesanan}
+        disabled={submitting}
+        className="w-full py-4 rounded-2xl font-bold text-white flex items-center justify-center gap-2"
+        style={{
+          background: submitting ? v("--c-border") : "var(--c-gradient-r)",
+          fontFamily: "'Inter',sans-serif",
+          cursor: submitting ? "not-allowed" : "pointer",
+        }}
+      >
+        {submitting ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Membuat Pesanan...
+          </>
+        ) : (
+          <>
+            <Check size={15} /> Buat Pesanan Sekarang
+          </>
+        )}
+      </motion.button>
+
+      <button
+        onClick={onBack}
+        className="w-full text-sm text-center"
+        style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}
+      >
+        ← Kembali ke pilihan pengiriman
+      </button>
     </div>
   );
 }
-
-/* ══════════════════════════════════════════════════════════════
-   MAIN CHECKOUT PAGE
-══════════════════════════════════════════════════════════════ */
 
 export function CheckoutPage() {
   const location = useLocation();
   const prefill  = (location.state as { prefill?: Prefill } | null)?.prefill ?? null;
 
-  const [step,    setStep]    = useState(0);
-  const [success, setSuccess] = useState(false);
+  const [step,           setStep]          = useState(0);
+  const [success,        setSuccess]       = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
+
+  // ── Baca cart & voucher dari localStorage ──
+  const cartItems     = getCart();
+  const appliedVoucher = getAppliedVoucher();
 
   const [orderData, setOrderDataState] = useState<OrderData>(() => {
     if (prefill) {
@@ -1041,19 +1202,36 @@ export function CheckoutPage() {
   const setOrderData = (partial: Partial<OrderData>) =>
     setOrderDataState(prev => ({ ...prev, ...partial }));
 
-  /* Totals */
-  const products       = getProducts(orderData.category);
-  const sizes          = getSizes(orderData.category);
-  const selectedProd   = products.find(p => p.id === orderData.productId) ?? null;
-  const selectedSize   = sizes.find(s => s.id === orderData.sizeId) ?? null;
-  const selectedCour   = COURIERS.find(c => c.id === orderData.courierId) ?? null;
-  const selectedPay    = PAYMENT_METHODS.find(p => p.id === orderData.paymentId) ?? null;
+  /* ── Totals ── */
+  const products     = getProducts(orderData.category);
+  const sizes        = getSizes(orderData.category);
+  const selectedProd = products.find(p => p.id === orderData.productId) ?? null;
+  const selectedSize = sizes.find(s => s.id === orderData.sizeId) ?? null;
+  const selectedCour = COURIERS.find(c => c.id === orderData.courierId) ?? null;
+  const selectedPay  = PAYMENT_METHODS.find(p => p.id === orderData.paymentId) ?? null;
 
-  const prodTotal  = prefill
-    ? prefill.estimatedPrice
-    : selectedProd ? selectedProd.basePrice * (selectedSize?.multiplier ?? 1) * orderData.qty : 0;
+  // Subtotal produk
+  const checkedItems = cartItems.filter(i => i.checked);
+  const prodTotal = prefill
+    ? prefill.estimatedPrice * orderData.qty
+    : checkedItems.length > 0
+      // dari keranjang
+      ? checkedItems.reduce((s, i) => s + i.price * i.qty, 0)
+      // dari checkout langsung
+      : selectedProd
+        ? selectedProd.basePrice * (selectedSize?.multiplier ?? 1) * orderData.qty
+        : 0;
+
   const ongkir     = selectedCour?.price ?? 0;
-  const grandTotal = prodTotal + ongkir;
+
+  // Diskon dari voucher yang sudah divalidasi di KeranjangPage
+  const discount = appliedVoucher
+    ? appliedVoucher.type === "percentage"
+      ? Math.round(prodTotal * (appliedVoucher.discountValue / 100))
+      : Math.min(appliedVoucher.discountValue, prodTotal)
+    : 0;
+
+  const grandTotal = prodTotal + ongkir - discount;
 
   /* SUCCESS */
   if (success) return (
@@ -1066,23 +1244,36 @@ export function CheckoutPage() {
           transition={{ duration: 1.5, repeat: Infinity }} style={{ border: "2px solid #10B981" }} />
       </motion.div>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
-        <h1 className="font-['Poppins',sans-serif] font-bold text-3xl mb-2" style={{ color: v("--c-text") }}>Pesanan Berhasil!</h1>
+        <h1 className="font-['Poppins',sans-serif] font-bold text-3xl mb-2" style={{ color: v("--c-text") }}>
+          Pesanan Berhasil!
+        </h1>
         <p className="text-sm mb-6" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
           {selectedPay?.group === "manual"
             ? "Tim kami akan memverifikasi pembayaran Anda dalam 1×24 jam."
             : "Pembayaran dikonfirmasi. Tim kami segera memproses pesanan Anda."}
         </p>
-        <div className="inline-block px-6 py-4 rounded-2xl mb-6" style={{ background: "rgba(46,125,50,0.08)", border: "1.5px solid rgba(46,125,50,0.2)" }}>
-          <p className="text-xs mb-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>Nomor Pesanan</p>
-          <p className="font-['JetBrains_Mono',monospace] font-bold text-xl" style={{ color: v("--c-primary") }}>ORD-2025-0049</p>
+
+        {/* Nomor pesanan dari backend */}
+        <div className="inline-block px-6 py-4 rounded-2xl mb-6"
+          style={{ background: "rgba(46,125,50,0.08)", border: "1.5px solid rgba(46,125,50,0.2)" }}>
+          <p className="text-xs mb-1" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+            Nomor Pesanan
+          </p>
+          <p className="font-['JetBrains_Mono',monospace] font-bold text-xl" style={{ color: v("--c-primary)" )}}>
+            {createdOrderId
+              ? `ORD-${String(createdOrderId).padStart(8, "0")}`
+              : "—"}
+          </p>
         </div>
-        <div className="text-left rounded-2xl p-4 mb-6 max-w-sm mx-auto" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
+
+        <div className="text-left rounded-2xl p-4 mb-6 max-w-sm mx-auto"
+          style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
           {[
-            ["Produk",     prefill?.productName ?? selectedProd?.name ?? "-"],
-            ["Ukuran",     prefill?.sizeLabel   ?? selectedSize?.label ?? "-"],
+            ["Produk",     prefill?.productName ?? selectedProd?.name ?? checkedItems[0]?.name ?? "-"],
             ["Qty",        `${orderData.qty}×`],
-            ["Pengiriman", selectedCour?.name   ?? "-"],
-            ["Pembayaran", selectedPay?.label   ?? "-"],
+            ["Pengiriman", selectedCour?.name ?? "-"],
+            ["Pembayaran", selectedPay?.label  ?? "-"],
+            ...(discount > 0 ? [["Diskon", `-${fmt(discount)}`]] : []),
             ["Total",      fmt(grandTotal)],
           ].map(([k, val]) => (
             <div key={k} className="flex justify-between py-1.5" style={{ borderBottom: `1px solid ${v("--c-border")}` }}>
@@ -1091,12 +1282,15 @@ export function CheckoutPage() {
             </div>
           ))}
         </div>
+
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link to="/pesanan" className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-2xl font-bold text-sm text-white"
+          <Link to="/pesanan"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-2xl font-bold text-sm text-white"
             style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>
             <ShoppingBag size={15} /> Lihat Pesanan Saya
           </Link>
-          <Link to="/produk" className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-2xl font-semibold text-sm"
+          <Link to="/produk"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-2xl font-semibold text-sm"
             style={{ border: `1.5px solid ${v("--c-border")}`, color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>
             Lanjut Belanja
           </Link>
@@ -1170,7 +1364,17 @@ export function CheckoutPage() {
                   {step === 0 && <StepSpesifikasi onNext={() => setStep(1)} orderData={orderData} setOrderData={setOrderData} prefill={prefill} />}
                   {step === 1 && <StepPengiriman  onNext={() => setStep(2)} onBack={() => setStep(0)} orderData={orderData} setOrderData={setOrderData} />}
                   {step === 2 && <StepPilihPembayaran onNext={() => setStep(3)} onBack={() => setStep(1)} orderData={orderData} setOrderData={setOrderData} />}
-                  {step === 3 && <StepProsesBayar onSuccess={() => setSuccess(true)} onBack={() => setStep(2)} orderData={orderData} total={grandTotal} />}
+                  {step === 3 && (
+                    <StepProsesBayar
+                      onSuccess={() => setSuccess(true)}
+                      onBack={() => setStep(2)}
+                      orderData={orderData}
+                      total={grandTotal}
+                      cartItems={cartItems}
+                      voucherCode={appliedVoucher?.code ?? ""}
+                      onCreated={(id) => setCreatedOrderId(id)}
+                    />
+                  )}
                 </div>
               </motion.div>
             </AnimatePresence>
@@ -1218,12 +1422,57 @@ export function CheckoutPage() {
               {(prefill || selectedProd) && (
                 <>
                   <div className="flex flex-col gap-2 mb-4">
-                    {[["Subtotal", fmt(prodTotal)], ["Ongkir", ongkir === 0 && selectedCour ? "GRATIS" : selectedCour ? fmt(ongkir) : "—"]].map(([l, val]) => (
-                      <div key={l} className="flex justify-between text-sm">
-                        <span style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{l}</span>
-                        <span style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>{val}</span>
+                    {[
+                      ["Subtotal", fmt(prodTotal)],
+                      [
+                        "Ongkir",
+                        ongkir === 0 && selectedCour
+                          ? "GRATIS"
+                          : selectedCour
+                          ? fmt(ongkir)
+                          : "—",
+                      ],
+                    ].map(([l, val]) => (
+                      <div key={String(l)} className="flex justify-between text-sm">
+                        <span
+                          style={{
+                            color: v("--c-text-sec"),
+                            fontFamily: "'Inter',sans-serif",
+                          }}
+                        >
+                          {l}
+                        </span>
+                        <span
+                          style={{
+                            color: v("--c-text"),
+                            fontFamily: "'Poppins',sans-serif",
+                          }}
+                        >
+                          {val}
+                        </span>
                       </div>
                     ))}
+
+                    {discount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span
+                          style={{
+                            color: "#10B981",
+                            fontFamily: "'Inter',sans-serif",
+                          }}
+                        >
+                          Diskon {appliedVoucher?.code}
+                        </span>
+                        <span
+                          style={{
+                            color: "#10B981",
+                            fontFamily: "'Poppins',sans-serif",
+                          }}
+                        >
+                          -{fmt(discount)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex justify-between items-center pt-3" style={{ borderTop: `2px solid ${v("--c-border")}` }}>
                     <span className="font-semibold text-sm" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>Total</span>

@@ -8,6 +8,8 @@ import {
 import { v } from "../../components/pageUtils";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
+
 const TABS = ["Produk", "Sewa & Jasa", "Kategori", "Bahan Baku"];
 
 export function AdminProduk() {
@@ -280,7 +282,7 @@ export function AdminProduk() {
   const getProducts = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/products"
+        `${API}/products`
       );
 
       const data = await response.json();
@@ -300,7 +302,7 @@ export function AdminProduk() {
   const getCategories = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/categories"
+        `${API}/categories`
       );
 
       const data =
@@ -320,7 +322,7 @@ export function AdminProduk() {
       try {
         const response =
           await fetch(
-            "http://localhost:3001/api/materials"
+            `${API}/materials`
           );
 
         const data =
@@ -352,7 +354,7 @@ export function AdminProduk() {
 
           const response =
             await fetch(
-              "http://localhost:3001/api/materials",
+              `${API}/materials`,
               {
                 method: "POST",
                 headers: {
@@ -419,7 +421,7 @@ export function AdminProduk() {
         try {
           const res =
             await fetch(
-              "http://localhost:3001/api/services"
+              `${API}/services`
             );
 
           const data =
@@ -452,7 +454,7 @@ export function AdminProduk() {
 
         try {
           await fetch(
-            `http://localhost:3001/api/materials/${id}`,
+            `${API}/materials/${id}`,
             {
               method:
                 "DELETE",
@@ -484,7 +486,7 @@ export function AdminProduk() {
       ) => {
         try {
           await fetch(
-            `http://localhost:3001/api/materials/${id}/stock`,
+            `${API}/materials/${id}/stock`,
             {
               method:
                 "PATCH",
@@ -538,7 +540,7 @@ export function AdminProduk() {
       try {
         const response =
           await fetch(
-            `http://localhost:3001/api/products/${id}`,
+            `${API}/products/${id}`,
             {
               method: "DELETE",
             }
@@ -667,7 +669,7 @@ export function AdminProduk() {
       */
       if (editingProduct) {
         response = await fetch(
-          `http://localhost:3001/api/products/${editingProduct.id}`,
+          `${API}/products/${editingProduct.id}`,
           {
             method: "PUT",
             body: form,
@@ -682,7 +684,7 @@ export function AdminProduk() {
       */
       else {
         response = await fetch(
-          "http://localhost:3001/api/products",
+          `${API}/products`,
           {
             method: "POST",
             body: form,
@@ -816,7 +818,7 @@ export function AdminProduk() {
 
         const response =
           await fetch(
-            "http://localhost:3001/api/categories",
+            `${API}/categories`,
             {
               method: "POST",
               headers: {
@@ -879,7 +881,7 @@ export function AdminProduk() {
 
           const response =
             await fetch(
-              `http://localhost:3001/api/categories/${id}`,
+              `${API}/categories/${id}`,
               {
                 method:
                   "DELETE",
@@ -912,7 +914,7 @@ export function AdminProduk() {
 
         const response =
           await fetch(
-            `http://localhost:3001/api/categories/${editingCategory.id}`,
+            `${API}/categories/${editingCategory.id}`,
             {
               method:
                 "PUT",
@@ -1044,8 +1046,8 @@ export function AdminProduk() {
 
           const url =
             editingService
-              ? `http://localhost:3001/api/services/${editingService.id}`
-              : "http://localhost:3001/api/services";
+              ? `${API}/services/${editingService.id}`
+              : `${API}/services`;
 
           const response =
             await fetch(url, {
@@ -1125,7 +1127,7 @@ export function AdminProduk() {
 
         try {
           await fetch(
-            `http://localhost:3001/api/services/${id}`,
+            `${API}/services/${id}`,
             {
               method: "DELETE",
             }
@@ -1153,7 +1155,7 @@ export function AdminProduk() {
         try {
           const response =
             await fetch(
-              `http://localhost:3001/api/services/${id}`,
+              `${API}/services/${id}`,
               {
                 method: "PUT",
                 headers: {
@@ -1208,7 +1210,7 @@ export function AdminProduk() {
         try {
           const res =
             await fetch(
-              `http://localhost:3001/api/product-config/${productId}`
+              `${API}/product-config/${productId}`
             );
 
           const data =
@@ -1227,7 +1229,7 @@ export function AdminProduk() {
         try {
           const res =
             await fetch(
-              `http://localhost:3001/api/product-config/${id}`,
+              `${API}/product-config/${id}`,
               {
                 method:
                   "DELETE",
@@ -1284,7 +1286,7 @@ export function AdminProduk() {
             ) {
 
               await fetch(
-                `http://localhost:3001/api/product-config/product/${editingProduct?.id}`,
+                `${API}/product-config/product/${editingProduct?.id}`,
                 {
                   method:
                     "DELETE",
@@ -1359,7 +1361,7 @@ export function AdminProduk() {
             allConfigs.map(
               (config) =>
                 fetch(
-                  "http://localhost:3001/api/product-config",
+                  `${API}/product-config`,
                   {
                     method:
                       "POST",
@@ -1430,7 +1432,7 @@ export function AdminProduk() {
     // ==========================
     const fetchTemplates = async () => {
       try {
-        const res = await fetch("http://localhost:3001/api/templates");
+        const res = await fetch(`${API}/templates`);
         const data = await res.json();
         setTemplates(data);
       } catch (err) {
@@ -1482,7 +1484,7 @@ export function AdminProduk() {
             );
 
           for (const item of filtered) {
-            await fetch("http://localhost:3001/api/product-config", {
+            await fetch(`${API}/product-config`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -1517,7 +1519,7 @@ export function AdminProduk() {
               }))
         );
 
-        await fetch("http://localhost:3001/api/templates", {
+        await fetch(`${API}/templates`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

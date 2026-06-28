@@ -7,7 +7,7 @@ import {
 import { v } from "../../components/pageUtils";
 import { useAuth } from "../../hooks/useAuth";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api/pengguna";
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
 
 // ── TYPES ────────────────────────────────────────────────────────
 type UserRole = "customer" | "operator" | "admin";
@@ -60,7 +60,7 @@ export function AdminPengguna() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res  = await fetch(`${API}/api/users`, { headers: authHeader });
+      const res  = await fetch(`${API}/users`, { headers: authHeader });
       if (!res.ok) throw new Error("Unauthorized");
       const data = await res.json();
 
@@ -114,7 +114,7 @@ export function AdminPengguna() {
     try {
       setActionId(user.id);
       const newStatus = user.status === "Aktif" ? "blocked" : "active";
-      const res = await fetch(`${API}/api/admin/users/${user.id}/status`, {
+      const res = await fetch(`${API}/admin/users/${user.id}/status`, {
         method:  "PATCH",
         headers: authHeader,
         body:    JSON.stringify({ status: newStatus }),
@@ -136,7 +136,7 @@ export function AdminPengguna() {
   const changeRole = async (user: UserRow, role: UserRole) => {
     try {
       setActionId(user.id);
-      const res = await fetch(`${API}/api/admin/users/${user.id}/role`, {
+      const res = await fetch(`${API}/admin/users/${user.id}/role`, {
         method:  "PATCH",
         headers: authHeader,
         body:    JSON.stringify({ role }),
@@ -601,8 +601,6 @@ function AddStaffModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
-
   const [form, setForm] = useState({
     fullName: "", email: "", phoneNumber: "", password: "", role: "operator",
   });
@@ -615,7 +613,7 @@ function AddStaffModal({
     }
     try {
       setLoading(true); setError("");
-      const res = await fetch(`${API}/api/admin/users`, {
+      const res = await fetch(`${API}/admin/users`, {
         method: "POST",
         headers: authHeader,
         body: JSON.stringify(form),

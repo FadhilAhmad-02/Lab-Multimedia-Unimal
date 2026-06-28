@@ -19,33 +19,69 @@ const IMG_WEDDING  = "https://images.unsplash.com/photo-1739909198159-a834175bd9
 const IMG_SOUVENIR = "https://images.unsplash.com/photo-1759563874678-844afcc582b8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzb3V2ZW5pciUyMGdpZnQlMjBwYWNrYWdpbmclMjBlbGVnYW50JTIwbHV4dXJ5fGVufDF8fHx8MTc3MTgxNDYyM3ww&ixlib=rb-4.1.0&q=80&w=1080";
 const IMG_DESIGN   = "https://images.unsplash.com/photo-1658863025658-4a259cc68fc9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncmFwaGljJTIwZGVzaWduJTIwcG9ydGZvbGlvJTIwcHJpbnQlMjBicmFuZGluZ3xlbnwxfHx8fDE3NzE5MjI3OTF8MA&ixlib=rb-4.1.0&q=80&w=1080";
 
+/* ── API ──────────────────────────────────────────────────── */
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api";
+
+/* ── Types ────────────────────────────────────────────────── */
+interface ApiCategory {
+  id: number;
+  name: string;
+  slug: string;
+  productCount?: number;
+}
+
+interface ApiProduct {
+  id: number;
+  name: string;
+  slug: string;
+  price: number;
+  priceLabel?: string;
+  image?: string;
+  imageUrl?: string;
+  rating?: number;
+  reviewCount?: number;
+}
+
+interface ApiFlashSale {
+  id: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: "upcoming" | "active" | "ended";
+  products: { product: { id: number; name: string; slug?: string; image?: string; imageUrl?: string; price?: number } }[];
+}
+
+/* ── Helpers ──────────────────────────────────────────────── */
+function formatRp(n: number) {
+  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)} Jt`;
+  return `Rp ${n.toLocaleString("id-ID")}`;
+}
+
+/* ── Category icon/gradient map (fallback by index) ────────── */
+const CAT_ICONS = [Printer, Flag, Gift, Package, Mail, Layers, ShoppingBag, FolderOpen];
+const CAT_GRADIENTS = [
+  "linear-gradient(135deg, #2E7D32, #4CAF50)",
+  "linear-gradient(135deg, #7C3AED, #A78BFA)",
+  "linear-gradient(135deg, #DB2777, #F472B6)",
+  "linear-gradient(135deg, #047857, #34D399)",
+  "linear-gradient(135deg, #B45309, #FCD34D)",
+  "linear-gradient(135deg, #2E7D32, #F9A825)",
+  "linear-gradient(135deg, #0369A1, #38BDF8)",
+  "linear-gradient(135deg, #7C2D12, #FB923C)",
+];
+
 /* ── Data ─────────────────────────────────────────────────── */
 const MARQUEE_ITEMS = ["Banner", "Spanduk", "Stiker", "Brosur", "Kartu Nama", "Backdrop", "Neon Box", "Packaging", "Undangan", "Souvenir", "Poster", "X-Banner"];
 
-const CATEGORIES = [
-  { name: "Cetak Digital",    Icon: Printer, count: 12, gradient: "linear-gradient(135deg, #2E7D32, #4CAF50)", slug: "cetak-digital" },
-  { name: "Spanduk & Banner", Icon: Flag,    count: 8,  gradient: "linear-gradient(135deg, #7C3AED, #A78BFA)", slug: "spanduk-banner" },
-  { name: "Souvenir",         Icon: Gift,    count: 15, gradient: "linear-gradient(135deg, #DB2777, #F472B6)", slug: "souvenir" },
-  { name: "Packaging",        Icon: Package, count: 10, gradient: "linear-gradient(135deg, #047857, #34D399)", slug: "packaging" },
-  { name: "Undangan",         Icon: Mail,    count: 6,  gradient: "linear-gradient(135deg, #B45309, #FCD34D)", slug: "undangan" },
-  { name: "Finishing",        Icon: Layers,  count: 4,  gradient: "linear-gradient(135deg, #2E7D32, #F9A825)", slug: "finishing" },
-];
-
-const BEST_SELLERS = [
-  { id: "1", slug: "banner-vinyl", name: "Banner Vinyl Premium",    price: "Rp 20.000/m²",   image: IMG_BANNER,  rating: 4.9, reviews: 324, wishlist: false },
-  { id: "2", slug: "kartu-nama",   name: "Kartu Nama Laminasi UV",  price: "Rp 35.000/100",  image: IMG_CARD,    rating: 4.8, reviews: 215, wishlist: true  },
-  { id: "3", slug: "mug-custom",   name: "Mug Custom Sublimasi",    price: "Rp 25.000/pcs",  image: IMG_MUG,     rating: 4.7, reviews: 189, wishlist: false },
-  { id: "4", slug: "packaging-box", name: "Paper Bag Premium",      price: "Rp 3.500/pcs",   image: IMG_PACK,    rating: 4.8, reviews: 142, wishlist: false },
-  { id: "5", slug: "undangan-nik", name: "Undangan Pernikahan Hard Cover", price: "Rp 5.000/pcs", image: IMG_WEDDING, rating: 4.9, reviews: 98, wishlist: true },
-  { id: "6", slug: "souvenir-box", name: "Souvenir Gift Set",      price: "Rp 45.000/set",  image: IMG_SOUVENIR, rating: 4.6, reviews: 76, wishlist: false },
-];
-
-const FLASH_SALE = [
-  { id: "f1", name: "Stiker Vinyl A4", price: "Rp 8.000", originalPrice: "Rp 12.000", discount: 33, image: IMG_DESIGN, stock: 45, maxStock: 100 },
-  { id: "f2", name: "Brosur A5 (100pcs)", price: "Rp 180.000", originalPrice: "Rp 250.000", discount: 28, image: IMG_CARD, stock: 23, maxStock: 50 },
-  { id: "f3", name: "Mug Custom", price: "Rp 18.000", originalPrice: "Rp 25.000", discount: 28, image: IMG_MUG, stock: 67, maxStock: 200 },
-  { id: "f4", name: "Paper Bag Kraft", price: "Rp 2.500", originalPrice: "Rp 3.500", discount: 29, image: IMG_PACK, stock: 12, maxStock: 100 },
-];
+/* ── Skeleton ─────────────────────────────────────────────── */
+function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <div
+      className={`animate-pulse rounded-xl ${className ?? ""}`}
+      style={{ background: "rgba(128,128,128,0.15)", ...style }}
+    />
+  );
+}
 
 const STEPS = [
   { num: "01", Icon: ShoppingCart, title: "Pilih Produk",   desc: "Temukan produk yang sesuai kebutuhan di katalog kami" },
@@ -141,13 +177,10 @@ function HeroSection() {
             borderValue="none"
             textColor="#ffffff"
             filledTextColor="#1B5E20"
-            onClick={() => navigate("/checkout")}
+            onClick={() => navigate("/produk")}
           >
             <ShoppingCart size={16} /> Pesan Sekarang
           </OutlineFillButton>
-          <Link to="/produk" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-sm" style={{ border: "1.5px solid rgba(255,255,255,0.3)", color: "#fff", fontFamily: "'Inter',sans-serif", background: "rgba(255,255,255,0.06)", backdropFilter: "blur(8px)" }}>
-            Lihat Katalog <ArrowRight size={14} />
-          </Link>
         </motion.div>
 
         {/* Floating stats card */}
@@ -195,6 +228,20 @@ function MarqueeBanner() {
 
 /* ── Categories ───────────────────────────────────────────── */
 function CategoriesSection() {
+  const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API}/categories`)
+      .then(r => r.json())
+      .then((data: ApiCategory[] | { data: ApiCategory[] }) => {
+        const list = Array.isArray(data) ? data : data.data ?? [];
+        setCategories(list);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <section className="py-20 theme-aware" style={{ background: v("--c-bg") }}>
       <div className="max-w-7xl mx-auto px-5 md:px-10">
@@ -208,19 +255,31 @@ function CategoriesSection() {
           </h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-          {CATEGORIES.map(({ name, Icon: CatIcon, count, gradient, slug }, i) => (
-            <motion.div key={name} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
-              whileHover={{ y: -8 }}
-            >
-              <Link to={`/produk?category=${slug}`} className="block rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 group" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}`, boxShadow: v("--c-shadow-card") }}>
-                <motion.div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-transform duration-300 group-hover:scale-110" style={{ background: gradient }}>
-                  <CatIcon size={28} className="text-white" aria-hidden="true" />
-                </motion.div>
-                <h3 className="font-semibold mb-1" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>{name}</h3>
-                <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{count} produk tersedia</p>
-              </Link>
-            </motion.div>
-          ))}
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-2xl p-6 text-center" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
+                  <Skeleton className="w-16 h-16 mx-auto mb-4" style={{ borderRadius: "1rem" }} />
+                  <Skeleton className="h-4 w-24 mx-auto mb-2" />
+                  <Skeleton className="h-3 w-16 mx-auto" />
+                </div>
+              ))
+            : categories.map(({ name, slug, productCount }, i) => {
+                const CatIcon = CAT_ICONS[i % CAT_ICONS.length];
+                const gradient = CAT_GRADIENTS[i % CAT_GRADIENTS.length];
+                return (
+                  <motion.div key={slug ?? name} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} whileHover={{ y: -8 }}>
+                    <Link to={`/produk?category=${slug}`} className="block rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 group" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}`, boxShadow: v("--c-shadow-card") }}>
+                      <motion.div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-transform duration-300 group-hover:scale-110" style={{ background: gradient }}>
+                        <CatIcon size={28} className="text-white" aria-hidden="true" />
+                      </motion.div>
+                      <h3 className="font-semibold mb-1" style={{ color: v("--c-text"), fontFamily: "'Poppins',sans-serif" }}>{name}</h3>
+                      <p className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                        {productCount != null ? `${productCount} produk tersedia` : "Lihat produk"}
+                      </p>
+                    </Link>
+                  </motion.div>
+                );
+              })}
         </div>
       </div>
     </section>
@@ -229,7 +288,21 @@ function CategoriesSection() {
 
 /* ── Best Sellers ─────────────────────────────────────────── */
 function BestSellersSection() {
-  const [wishlist, setWishlist] = useState<string[]>(BEST_SELLERS.filter(p => p.wishlist).map(p => p.id));
+  const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [wishlist, setWishlist] = useState<number[]>([]);
+
+  useEffect(() => {
+    fetch(`${API}/products?limit=6`)
+      .then(r => r.json())
+      .then((data: ApiProduct[] | { data: ApiProduct[] }) => {
+        const list = Array.isArray(data) ? data : data.data ?? [];
+        setProducts(list);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <section className="py-20 theme-aware" style={{ background: v("--c-bg-sec") }}>
       <div className="max-w-7xl mx-auto px-5 md:px-10">
@@ -246,30 +319,50 @@ function BestSellersSection() {
           </Link>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {BEST_SELLERS.map((product, i) => (
-            <motion.div key={product.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}
-              className="rounded-2xl overflow-hidden group cursor-pointer flex flex-col" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}`, boxShadow: v("--c-shadow-card") }}
-            >
-              <div className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
-                <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-white text-xs font-bold" style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>TERLARIS</span>
-                <button onClick={() => setWishlist(w => w.includes(product.id) ? w.filter(x => x !== product.id) : [...w, product.id])} className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200" style={{ background: "rgba(255,255,255,0.9)" }}>
-                  <Heart size={12} style={{ color: wishlist.includes(product.id) ? "#EF4444" : "#9CA3AF", fill: wishlist.includes(product.id) ? "#EF4444" : "none" }} />
-                </button>
-              </div>
-              <div className="p-3 flex flex-col flex-1">
-                <p className="text-xs font-semibold mb-1 line-clamp-2 flex-1" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{product.name}</p>
-                <div className="flex items-center gap-1 mb-2">
-                  <Star size={10} fill="#F59E0B" style={{ color: "#F59E0B" }} />
-                  <span className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>{product.rating} ({product.reviews})</span>
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-2xl overflow-hidden flex flex-col" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}` }}>
+                  <Skeleton style={{ aspectRatio: "4/3", borderRadius: 0 }} />
+                  <div className="p-3 space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-2/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <Skeleton className="h-7 w-full mt-1" />
+                  </div>
                 </div>
-                <p className="text-xs font-bold mb-2" style={{ color: v("--c-primary"), fontFamily: "'Poppins',sans-serif" }}>{product.price}</p>
-                <Link to={`/checkout?cat=${product.slug?.split('-')[0]}&pid=${product.slug}`} className="mt-auto w-full flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold text-white transition-all duration-200" style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>
-                  <ShoppingCart size={10} /> Pesan
-                </Link>
-              </div>
-            </motion.div>
-          ))}
+              ))
+            : products.map((product, i) => {
+                const img = product.imageUrl ?? product.image ?? IMG_BANNER;
+                const price = product.priceLabel ?? formatRp(product.price);
+                return (
+                  <motion.div key={product.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}
+                    className="rounded-2xl overflow-hidden group cursor-pointer flex flex-col" style={{ background: v("--c-card"), border: `1px solid ${v("--c-border")}`, boxShadow: v("--c-shadow-card") }}
+                  >
+                    <div className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
+                      <img src={img} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-white text-xs font-bold" style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>TERLARIS</span>
+                      <button onClick={() => setWishlist(w => w.includes(product.id) ? w.filter(x => x !== product.id) : [...w, product.id])} className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200" style={{ background: "rgba(255,255,255,0.9)" }}>
+                        <Heart size={12} style={{ color: wishlist.includes(product.id) ? "#EF4444" : "#9CA3AF", fill: wishlist.includes(product.id) ? "#EF4444" : "none" }} />
+                      </button>
+                    </div>
+                    <div className="p-3 flex flex-col flex-1">
+                      <p className="text-xs font-semibold mb-1 line-clamp-2 flex-1" style={{ color: v("--c-text"), fontFamily: "'Inter',sans-serif" }}>{product.name}</p>
+                      {product.rating != null && (
+                        <div className="flex items-center gap-1 mb-2">
+                          <Star size={10} fill="#F59E0B" style={{ color: "#F59E0B" }} />
+                          <span className="text-xs" style={{ color: v("--c-text-sec"), fontFamily: "'Inter',sans-serif" }}>
+                            {product.rating} {product.reviewCount != null ? `(${product.reviewCount})` : ""}
+                          </span>
+                        </div>
+                      )}
+                      <p className="text-xs font-bold mb-2" style={{ color: v("--c-primary"), fontFamily: "'Poppins',sans-serif" }}>{price}</p>
+                      <Link to={`/checkout?pid=${product.id}&slug=${product.slug}`} className="mt-auto w-full flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold text-white transition-all duration-200" style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>
+                        <ShoppingCart size={10} /> Pesan
+                      </Link>
+                    </div>
+                  </motion.div>
+                );
+              })}
         </div>
       </div>
     </section>
@@ -278,7 +371,30 @@ function BestSellersSection() {
 
 /* ── Flash Sale ───────────────────────────────────────────── */
 function FlashSaleSection() {
-  const { h, m, s } = useCountdown(5);
+  const [flashSale, setFlashSale] = useState<ApiFlashSale | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API}/promo/flash-sales`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then((data: ApiFlashSale[] | { data: ApiFlashSale[] }) => {
+        const list: ApiFlashSale[] = Array.isArray(data) ? data : (data.data ?? []);
+        // Prioritaskan yang active, lalu upcoming
+        const active = list.find(fs => fs.status === "active")
+          ?? list.find(fs => fs.status === "upcoming")
+          ?? null;
+        setFlashSale(active);
+      })
+      .catch(() => setFlashSale(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Countdown to flash sale end date, or generic 5-hour countdown
+  const endMs = flashSale ? new Date(flashSale.endDate).getTime() : 0;
+  const { h, m, s } = useCountdown(endMs > Date.now() ? Math.floor((endMs - Date.now()) / 3_600_000) : 5);
+
+  if (!loading && !flashSale) return null;
+
   return (
     <section className="py-20 overflow-hidden" style={{ background: "#0F172A" }}>
       <div className="max-w-7xl mx-auto px-5 md:px-10">
@@ -286,6 +402,7 @@ function FlashSaleSection() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <span className="px-3 py-1.5 rounded-full text-white text-sm font-bold animate-pulse" style={{ background: "#EF4444", fontFamily: "'Inter',sans-serif" }}>⚡ FLASH SALE</span>
+              {flashSale && <span className="text-white/50 text-sm" style={{ fontFamily: "'Inter',sans-serif" }}>{flashSale.name}</span>}
             </div>
             <h2 className="font-['Poppins',sans-serif] font-bold text-white" style={{ fontSize: "clamp(1.5rem, 2.5vw, 2rem)" }}>Penawaran Terbatas Hari Ini!</h2>
           </div>
@@ -301,33 +418,42 @@ function FlashSaleSection() {
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {FLASH_SALE.map((item, i) => (
-            <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-              className="rounded-2xl overflow-hidden" style={{ background: "#1E293B", border: "1px solid rgba(255,255,255,0.08)" }}
-            >
-              <div className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover" style={{ filter: "brightness(0.8)" }} />
-                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-white text-xs font-bold" style={{ background: "#EF4444", fontFamily: "'Inter',sans-serif" }}>-{item.discount}%</span>
-              </div>
-              <div className="p-3">
-                <p className="text-white text-xs font-semibold mb-1 line-clamp-2" style={{ fontFamily: "'Inter',sans-serif" }}>{item.name}</p>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="font-bold" style={{ color: "var(--c-accent)", fontFamily: "'Poppins',sans-serif", fontSize: 13 }}>{item.price}</span>
-                  <span className="text-white/35 text-xs line-through" style={{ fontFamily: "'Inter',sans-serif" }}>{item.originalPrice}</span>
-                </div>
-                {/* Stock bar */}
-                <div className="mb-2">
-                  <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)" }}>
-                    <div className="h-1.5 rounded-full transition-all" style={{ width: `${(item.stock / item.maxStock) * 100}%`, background: item.stock / item.maxStock < 0.3 ? "#EF4444" : "#10B981" }} />
+          {loading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-2xl overflow-hidden" style={{ background: "#1E293B", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <Skeleton style={{ aspectRatio: "4/3", borderRadius: 0, background: "rgba(255,255,255,0.07)" }} />
+                  <div className="p-3 space-y-2">
+                    <Skeleton className="h-3 w-full" style={{ background: "rgba(255,255,255,0.07)" }} />
+                    <Skeleton className="h-3 w-2/3" style={{ background: "rgba(255,255,255,0.07)" }} />
+                    <Skeleton className="h-1.5 w-full" style={{ background: "rgba(255,255,255,0.07)" }} />
+                    <Skeleton className="h-8 w-full mt-1" style={{ background: "rgba(255,255,255,0.07)" }} />
                   </div>
-                  <p className="text-white/40 text-xs mt-1" style={{ fontFamily: "'Inter',sans-serif" }}>Sisa {item.stock} item</p>
                 </div>
-                <Link to="/checkout" className="w-full flex items-center justify-center py-2 rounded-lg text-xs font-bold text-white" style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>
-                  Beli Sekarang
-                </Link>
-              </div>
-            </motion.div>
-          ))}
+              ))
+            : (flashSale?.products ?? []).map(({ product }, i) => {
+                const img = product.imageUrl ?? product.image ?? IMG_DESIGN;
+                return (
+                  <motion.div key={product.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                    className="rounded-2xl overflow-hidden" style={{ background: "#1E293B", border: "1px solid rgba(255,255,255,0.08)" }}
+                  >
+                    <div className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
+                      <img src={img} alt={product.name} className="w-full h-full object-cover" style={{ filter: "brightness(0.8)" }} />
+                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-white text-xs font-bold animate-pulse" style={{ background: "#EF4444", fontFamily: "'Inter',sans-serif" }}>⚡ SALE</span>
+                    </div>
+                    <div className="p-3">
+                      <p className="text-white text-xs font-semibold mb-2 line-clamp-2" style={{ fontFamily: "'Inter',sans-serif" }}>{product.name}</p>
+                      {product.price != null && (
+                        <p className="font-bold mb-3" style={{ color: "var(--c-accent)", fontFamily: "'Poppins',sans-serif", fontSize: 13 }}>
+                          {formatRp(product.price)}
+                        </p>
+                      )}
+                      <Link to={product.slug ? `/produk/${product.slug}` : "/produk"} className="w-full flex items-center justify-center py-2 rounded-lg text-xs font-bold text-white" style={{ background: "var(--c-gradient-r)", fontFamily: "'Inter',sans-serif" }}>
+                        Beli Sekarang
+                      </Link>
+                    </div>
+                  </motion.div>
+                );
+              })}
         </div>
       </div>
     </section>

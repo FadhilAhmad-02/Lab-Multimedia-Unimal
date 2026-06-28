@@ -16,6 +16,12 @@ import adminRoutes from "./routes/admin.routes";
 import laporanRouter from "./routes/laporan.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import promoRoutes from "./routes/promo.routes";
+import pengaturanRouter from "./routes/pengaturan.routes";
+import { maintenanceGuard } from "./middlewares/maintenance.middleware";
+import operatorRouter from "./routes/operator.routes";
+import customerOrderRouter from "./routes/customerorder.routes";
+import { authenticate } from "./middlewares/auth.middleware";
+import notificationRoutes from "./routes/notification.routes";
 
 const app = express();
 
@@ -39,6 +45,10 @@ app.get("/", (_req, res) => {
   res.send("Backend Lab Multimedia berjalan 🚀");
 });
 
+app.use(express.static(path.join(__dirname, "../public")));
+
+app.use("/api/pengaturan", pengaturanRouter);
+
 // ── ROUTES ────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -53,8 +63,15 @@ app.use("/api/services", serviceRoutes);
 app.use("/api/laporan", laporanRouter);
 app.use("/api/promo", promoRoutes);
 app.use("/api/product-config", productConfigRoutes);
+app.use("/api/pengaturan", pengaturanRouter);
 app.use("/api/templates", templateRoutes);
+app.use("/api/orders", maintenanceGuard, orderRoutes);
+app.use("/api/products", maintenanceGuard, productRoutes);
+app.use("/api/notifications", authenticate, notificationRoutes);
 
+app.use("/api/operator", operatorRouter);
+
+app.use("/api/customer/orders", customerOrderRouter);
 // ── START ─────────────────────────────────────
 app.listen(3001, () => {
   console.log("Server running on http://localhost:3001");

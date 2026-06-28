@@ -55,6 +55,8 @@ export const authorize = (...roles: UserRole[]) => {
     };
 };
 
+
+
 // Shorthand helpers untuk tiap role
 export const onlyAdmin = authorize(UserRole.admin);
 export const onlyOperator = authorize(UserRole.operator);

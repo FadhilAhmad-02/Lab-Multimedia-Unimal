@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { User, Mail, Phone, Lock, Eye, EyeOff, Printer, Gift } from "lucide-react";
 import { v } from "../../components/pageUtils";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:3001/api").replace(/\/api$/, "");
 
 function PasswordStrength({ password }: { password: string }) {
   const getStrength = () => {
