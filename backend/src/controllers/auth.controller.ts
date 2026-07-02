@@ -100,7 +100,7 @@ export const register = async (req: AuthRequest, res: Response) => {
     });
 
     return res.status(201).json({
-      message: "Registrasi berhasil",
+      message: "Registrasi berhasil (testing push)",
       token,
       user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role },
     });
