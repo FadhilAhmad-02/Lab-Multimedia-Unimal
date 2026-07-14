@@ -23,7 +23,11 @@ import customerOrderRouter from "./routes/customerorder.routes";
 import { authenticate } from "./middlewares/auth.middleware";
 import notificationRoutes from "./routes/notification.routes";
 
+import { helmetConfig } from "./security";
+
 const app = express();
+
+app.use(helmetConfig);
 
 // ── CORS ──────────────────────────────────────
 app.use(cors({ origin: "*" }));
