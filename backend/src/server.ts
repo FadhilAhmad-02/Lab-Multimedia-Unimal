@@ -23,7 +23,8 @@ import customerOrderRouter from "./routes/customerorder.routes";
 import { authenticate } from "./middlewares/auth.middleware";
 import notificationRoutes from "./routes/notification.routes";
 
-import { helmetConfig, corsConfig, apiLimiter, speedLimiter, hppConfig } from "./security";
+import { helmetConfig, corsConfig, apiLimiter, speedLimiter, hppConfig, compressionConfig } from "./security";
+import { errorHandler } from "./middlewares/error.middleware";
 
 const app = express();
 
@@ -38,6 +39,9 @@ app.use(speedLimiter);
 
 // ── HPP ───────────────────────────────────────
 app.use(hppConfig);
+
+// ── COMPRESSION ─────────────────────────────
+app.use(compressionConfig);
 
 // ── BODY PARSER ───────────────────────────────
 app.use(express.json());
@@ -83,6 +87,8 @@ app.use("/api/notifications", authenticate, notificationRoutes);
 app.use("/api/operator", operatorRouter);
 
 app.use("/api/customer/orders", customerOrderRouter);
+
+app.use(errorHandler);
 // ── START ─────────────────────────────────────
 app.listen(3001, () => {
   console.log("Server running on http://localhost:3001");
