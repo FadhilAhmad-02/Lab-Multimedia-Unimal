@@ -23,7 +23,7 @@ import customerOrderRouter from "./routes/customerorder.routes";
 import { authenticate } from "./middlewares/auth.middleware";
 import notificationRoutes from "./routes/notification.routes";
 
-import { helmetConfig, corsConfig, apiLimiter, speedLimiter } from "./security";
+import { helmetConfig, corsConfig, apiLimiter, speedLimiter, hppConfig } from "./security";
 
 const app = express();
 
@@ -35,6 +35,9 @@ app.use(corsConfig);
 // ── RATE LIMITER ─────────────────────────────
 app.use(apiLimiter);
 app.use(speedLimiter);
+
+// ── HPP ───────────────────────────────────────
+app.use(hppConfig);
 
 // ── BODY PARSER ───────────────────────────────
 app.use(express.json());
